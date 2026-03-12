@@ -1,0 +1,17 @@
+build/
+install/
+third_party/vendor/
+.deps/
+.venv/
+models/vendor/
+models/generated/
+models/custom/
+outputs/
+logs/
+*.log
+*.bin
+*.jsonl
+*.user
+__pycache__/
+*.pyc
+*.pt

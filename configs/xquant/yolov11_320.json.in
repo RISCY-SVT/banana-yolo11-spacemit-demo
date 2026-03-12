@@ -1,0 +1,24 @@
+{
+    "model_parameters": {
+        "onnx_model": "@ONNX_MODEL@",
+        "working_dir": "@WORKING_DIR@",
+        "output_prefix": "@OUTPUT_PREFIX@"
+    },
+    "calibration_parameters": {
+        "input_parametres": [
+            {
+                "mean_value": [0, 0, 0],
+                "std_value": [255, 255, 255],
+                "color_format": "rgb",
+                "data_list_path": "@CALIB_LIST@"
+            }
+        ],
+        "calibration_step": @CALIBRATION_STEP@
+    },
+    "quantization_parameters": {
+        "truncate_var_names": [
+            "/model.23/Mul_2_output_0",
+            "/model.23/Sigmoid_output_0"
+        ]
+    }
+}
