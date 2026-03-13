@@ -2,23 +2,22 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="${BANANA_SSH_TARGET:-svt@banana}"
-BOARD_DIR="${BOARD_DIR:-/home/svt/banana-yolo11-spacemit-demo}"
-MODEL_PATH="${1:-${BOARD_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}"
-INPUT_SIZE="${2:-320}"
-IMAGE_PATH="${3:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
+source "${ROOT_DIR}/scripts/common.sh"
 
-source /data/build_scripts/01-env.sh
-"${ROOT_DIR}/scripts/deploy_to_banana.sh"
-
-ssh "${TARGET}" "\
-  set -euo pipefail; \
-  export LD_LIBRARY_PATH='${BOARD_DIR}/runtime/lib:/home/svt/opencv-install-k1x-gtk3/lib:\${LD_LIBRARY_PATH:-}'; \
-  taskset -c 0,1,2,3 '${BOARD_DIR}/app/bin/banana_yolo11_demo' \
-    --model '${MODEL_PATH}' \
-    --labels '${BOARD_DIR}/assets/coco80.txt' \
-    --input-size '${INPUT_SIZE}' \
-    --source 'image:${IMAGE_PATH}' \
+if banana_demo_is_board_mode; then
+  REPO_DIR="$(banana_demo_board_root)"
+  MODEL_PATH="${1:-${MODEL_PATH:-${REPO_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}}"
+  INPUT_SIZE="${2:-${INPUT_SIZE:-320}}"
+  IMAGE_PATH="${3:-${IMAGE_PATH:-$(banana_demo_resolve_default_image "${REPO_DIR}")}}"
+  LOG_FILE="${LOG_FILE:-${REPO_DIR}/logs/bench_full_${INPUT_SIZE}.log}"
+  mkdir -p "${REPO_DIR}/logs"
+  banana_demo_export_runtime_env "${REPO_DIR}"
+  banana_demo_unset_parallel_env
+  exec taskset -c 0,1,2,3 "${REPO_DIR}/bin/banana_yolo11_demo" \
+    --model "${MODEL_PATH}" \
+    --labels "${REPO_DIR}/assets/coco80.txt" \
+    --input-size "${INPUT_SIZE}" \
+    --source "image:${IMAGE_PATH}" \
     --provider spacemit \
     --threads 4 \
     --pin cluster0 \
@@ -30,5 +29,16 @@ ssh "${TARGET}" "\
     --display 0 \
     --headless 1 \
     --quiet 1 \
-    --log-file '${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log'"
+    --log-file "${LOG_FILE}"
+fi
 
+source /data/build_scripts/01-env.sh
+TARGET="$(banana_demo_host_target)"
+BOARD_DIR="$(banana_demo_host_board_dir)"
+"${ROOT_DIR}/scripts/deploy_to_banana.sh"
+
+MODEL_PATH="${1:-${BOARD_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}"
+INPUT_SIZE="${2:-320}"
+IMAGE_PATH="${3:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
+REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"
+ssh "${TARGET}" "cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board LOG_FILE='${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log' ./scripts/bench_full_demo.sh '${MODEL_PATH}' '${INPUT_SIZE}' '${REMOTE_IMAGE_PATH}'"

@@ -13,7 +13,7 @@ include(GNUInstallDirs)
 option(BANANA_DEMO_ENABLE_ASAN "Enable address sanitizer" OFF)
 
 find_package(Threads REQUIRED)
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui videoio)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs highgui videoio dnn)
 find_package(VendorSpacemitOrt REQUIRED)
 
 add_library(banana_demo_core
@@ -67,6 +67,10 @@ endif()
 
 add_executable(banana_yolo11_demo src/main.cpp)
 target_link_libraries(banana_yolo11_demo PRIVATE banana_demo_core)
+set_target_properties(banana_yolo11_demo PROPERTIES
+    BUILD_RPATH "${VENDOR_SPACEMIT_ORT_ROOT}/lib"
+    INSTALL_RPATH "$ORIGIN/../runtime/lib;$ORIGIN/../opencv/lib"
+)
 
 install(TARGETS banana_yolo11_demo
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"

@@ -4,14 +4,16 @@ This file is updated after board validation.
 
 - Image demo
   - Required image: `/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg`
-  - Vendor INT8 320x320 path works on board.
-  - The required photo produced visible detections at `--conf 0.01`.
+  - Vendor INT8 320x320 path is validated on board with `preprocess=resize`.
+  - The required photo produces a stable person detection at the recommended `--conf 0.05`.
+  - A synthetic white-wall input is clean at `--conf 0.05` and above.
   - Custom dynamic INT8 640x640 path also works on board.
   - A cleaner 640 sample was captured at `--conf 0.25`.
 
 - Camera demo
   - USB camera `/dev/video20` works in MJPG mode.
   - Headless live inference is stable.
+  - Default camera runs no longer create AVI output unless explicitly requested.
   - Display mode requires a valid desktop session plus Wayland/Xwayland session variables.
   - A display probe reached the application branch `display active, press any key to exit`.
 
@@ -44,6 +46,11 @@ This file is updated after board validation.
   - A 60-frame MJPG headless camera run completed at:
     - per-frame total around `44-56 ms`
     - end-to-end loop `7.486739 FPS`
+
+- Remediation notes
+  - The original vendor 320x320 path was only performance-validated. A remediation pass fixed the decode path and the deployed defaults.
+  - The repository now treats `0.05` as the recommended vendor 320x320 demo confidence.
+  - `0.01` remains available for debugging but is intentionally no longer the default.
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

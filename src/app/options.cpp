@@ -115,6 +115,11 @@ bool ParseAppOptions(int argc, char** argv, AppOptions& options, std::string& er
             options.decode_mode = argv[++i];
             continue;
         }
+        if (arg == "--preprocess-mode" && NeedValue(i, argc))
+        {
+            options.preprocess_mode = argv[++i];
+            continue;
+        }
         if (arg == "--warmup" && NeedValue(i, argc) && ParseInt(argv[++i], options.warmup))
             continue;
         if (arg == "--runs" && NeedValue(i, argc) && ParseInt(argv[++i], options.runs))
@@ -159,6 +164,13 @@ bool ParseAppOptions(int argc, char** argv, AppOptions& options, std::string& er
         error = "--benchmark-mode must be forward|full";
         return false;
     }
+    if (options.preprocess_mode != "auto" &&
+        options.preprocess_mode != "letterbox" &&
+        options.preprocess_mode != "resize")
+    {
+        error = "--preprocess-mode must be auto|letterbox|resize";
+        return false;
+    }
     if (options.source.rfind("image:", 0) != 0 && options.source.rfind("camera:", 0) != 0)
     {
         error = "--source must start with image: or camera:";
@@ -194,6 +206,7 @@ std::string BuildUsage()
         << "  --camera-fps <N>\n"
         << "  --camera-pixfmt auto|mjpg|yuyv\n"
         << "  --decode-mode auto|vendor|ultralytics\n"
+        << "  --preprocess-mode auto|letterbox|resize\n"
         << "  --warmup <N>\n"
         << "  --runs <N>\n"
         << "  --repeats <N>\n"
@@ -201,13 +214,20 @@ std::string BuildUsage()
         << "  --dump-out <path>\n"
         << "  --max-frames <N>\n"
         << '\n'
+        << "Notes:\n"
+        << "  - The official vendor 320x320 YOLO11 model in this repository is run with preprocess-mode=resize.\n"
+        << "  - The validated demo default confidence for the vendor 320x320 path is 0.05.\n"
+        << "    Lower values such as 0.01 are kept for debugging only.\n"
+        << "  - Custom Ultralytics/xquant models should normally use preprocess-mode=letterbox.\n"
+        << '\n'
         << "Examples:\n"
         << "  banana_yolo11_demo --model models/vendor/yolov11n_320x320.q.onnx "
-           "--source image:photo_2024-10-11_10-04-04.jpg --input-size 320 --provider spacemit\n"
+           "--source image:photo_2024-10-11_10-04-04.jpg --input-size 320 --provider spacemit "
+           "--preprocess-mode resize\n"
         << "  banana_yolo11_demo --model models/generated/yolov11n_640x640.q.onnx "
-           "--source camera:/dev/video0 --input-size 640 --camera-pixfmt mjpg --display 1\n";
+           "--source camera:/dev/video0 --input-size 640 --camera-pixfmt mjpg --display 1 "
+           "--preprocess-mode letterbox\n";
     return oss.str();
 }
 
 }  // namespace banana_demo
-

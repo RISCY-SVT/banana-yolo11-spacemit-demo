@@ -1,6 +1,7 @@
 build/
 install/
 third_party/vendor/
+third_party/spacemit-demo/
 .deps/
 .venv/
 models/vendor/

@@ -5,6 +5,7 @@
 
 #include "spacemit_ort_env.h"
 
+#include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
 
 #include <algorithm>
@@ -12,7 +13,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <set>
 #include <sstream>
@@ -40,6 +43,12 @@ std::unordered_map<std::string, std::string> BuildProviderOptionsFromEnv()
             provider_options[key] = value;
     }
     return provider_options;
+}
+
+bool DebugDecodeEnabled()
+{
+    const char* value = std::getenv("BANANA_DEMO_DEBUG_DECODE");
+    return value && *value && std::string(value) != "0";
 }
 
 std::string HashOutputTensor(const std::vector<float>& data)
@@ -198,6 +207,20 @@ void Yolo11Detector::BuildSession()
         output_name_ptrs_.push_back(name.c_str());
 }
 
+Yolo11Detector::PreprocessMode Yolo11Detector::ResolvePreprocessMode() const
+{
+    if (options_.preprocess_mode == "letterbox")
+        return PreprocessMode::kLetterbox;
+    if (options_.preprocess_mode == "resize")
+        return PreprocessMode::kResize;
+
+    const std::string model_name = std::filesystem::path(options_.model).filename().string();
+    if (model_name == "yolov11n_320x320.q.onnx" || model_name == "yolov11n_320x320.onnx")
+        return PreprocessMode::kResize;
+
+    return PreprocessMode::kLetterbox;
+}
+
 bool Yolo11Detector::PreprocessToNchw(const cv::Mat& bgr, std::vector<float>& nchw, PreprocessInfo& info) const
 {
     if (bgr.empty())
@@ -207,46 +230,74 @@ bool Yolo11Detector::PreprocessToNchw(const cv::Mat& bgr, std::vector<float>& nc
     info.src_h = bgr.rows;
     info.dst_w = input_width_;
     info.dst_h = input_height_;
+    info.scale_x = static_cast<float>(info.src_w) / static_cast<float>(input_width_);
+    info.scale_y = static_cast<float>(info.src_h) / static_cast<float>(input_height_);
+    info.pad_x = 0.f;
+    info.pad_y = 0.f;
+    info.mode = ResolvePreprocessMode();
 
-    const float ratio = std::min(static_cast<float>(input_width_) / static_cast<float>(bgr.cols),
-                                 static_cast<float>(input_height_) / static_cast<float>(bgr.rows));
-    const int new_w = static_cast<int>(std::round(static_cast<float>(bgr.cols) * ratio));
-    const int new_h = static_cast<int>(std::round(static_cast<float>(bgr.rows) * ratio));
-    info.ratio = ratio;
-    info.dw = (static_cast<float>(input_width_ - new_w)) / 2.f;
-    info.dh = (static_cast<float>(input_height_ - new_h)) / 2.f;
-
-    cv::Mat resized;
-    if (new_w != bgr.cols || new_h != bgr.rows)
-        cv::resize(bgr, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_LINEAR);
+    cv::Mat preprocessed;
+    if (info.mode == PreprocessMode::kResize)
+    {
+        cv::Mat resized;
+        cv::resize(bgr, resized, cv::Size(input_width_, input_height_), 0, 0, cv::INTER_LINEAR);
+        cv::cvtColor(resized, preprocessed, cv::COLOR_BGR2RGB);
+    }
     else
-        resized = bgr;
+    {
+        const float ratio = std::min(static_cast<float>(input_width_) / static_cast<float>(bgr.cols),
+                                     static_cast<float>(input_height_) / static_cast<float>(bgr.rows));
+        const int new_w = static_cast<int>(std::round(static_cast<float>(bgr.cols) * ratio));
+        const int new_h = static_cast<int>(std::round(static_cast<float>(bgr.rows) * ratio));
+        info.scale_x = 1.f / ratio;
+        info.scale_y = 1.f / ratio;
+        info.pad_x = (static_cast<float>(input_width_ - new_w)) / 2.f;
+        info.pad_y = (static_cast<float>(input_height_ - new_h)) / 2.f;
 
-    cv::Mat rgb;
-    cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
+        cv::Mat resized;
+        if (new_w != bgr.cols || new_h != bgr.rows)
+            cv::resize(bgr, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_LINEAR);
+        else
+            resized = bgr;
 
-    cv::Mat padded;
-    const int top = static_cast<int>(std::round(info.dh - 0.1f));
-    const int bottom = static_cast<int>(std::round(info.dh + 0.1f));
-    const int left = static_cast<int>(std::round(info.dw - 0.1f));
-    const int right = static_cast<int>(std::round(info.dw + 0.1f));
-    cv::copyMakeBorder(rgb, padded, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        cv::Mat rgb;
+        cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
 
-    cv::Mat float_image;
-    padded.convertTo(float_image, CV_32FC3, 1.f / 255.f);
+        const int top = static_cast<int>(std::round(info.pad_y - 0.1f));
+        const int bottom = static_cast<int>(std::round(info.pad_y + 0.1f));
+        const int left = static_cast<int>(std::round(info.pad_x - 0.1f));
+        const int right = static_cast<int>(std::round(info.pad_x + 0.1f));
+        cv::copyMakeBorder(rgb, preprocessed, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+    }
 
     nchw.resize(static_cast<size_t>(input_width_) * static_cast<size_t>(input_height_) * 3u);
-    const size_t plane = static_cast<size_t>(input_width_) * static_cast<size_t>(input_height_);
-    for (int y = 0; y < input_height_; ++y)
+    cv::Mat blob = cv::dnn::blobFromImage(preprocessed, 1.f / 255.f,
+                                          cv::Size(input_width_, input_height_),
+                                          cv::Scalar(), false, false, CV_32F);
+    std::copy(blob.begin<float>(), blob.end<float>(), nchw.begin());
+
+    if (DebugDecodeEnabled())
     {
-        const cv::Vec3f* row = float_image.ptr<cv::Vec3f>(y);
-        for (int x = 0; x < input_width_; ++x)
+        const cv::Vec3b bgr00 = bgr.at<cv::Vec3b>(0, 0);
+        const cv::Vec3b rgb00 = preprocessed.at<cv::Vec3b>(0, 0);
+        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(nchw.data());
+        std::cerr << "[preprocess] mode=" << (info.mode == PreprocessMode::kResize ? "resize" : "letterbox")
+                  << " src=" << info.src_w << 'x' << info.src_h
+                  << " dst=" << info.dst_w << 'x' << info.dst_h
+                  << " bgr00=[" << static_cast<int>(bgr00[0]) << ',' << static_cast<int>(bgr00[1]) << ','
+                  << static_cast<int>(bgr00[2]) << ']'
+                  << " rgb00=[" << static_cast<int>(rgb00[0]) << ',' << static_cast<int>(rgb00[1]) << ','
+                  << static_cast<int>(rgb00[2]) << ']'
+                  << " input_sha256=" << Sha256Hex(ptr, nchw.size() * sizeof(float))
+                  << " first_values=";
+        const size_t sample_count = std::min<size_t>(12, nchw.size());
+        for (size_t i = 0; i < sample_count; ++i)
         {
-            const size_t index = static_cast<size_t>(y) * static_cast<size_t>(input_width_) + static_cast<size_t>(x);
-            nchw[index] = row[x][0];
-            nchw[plane + index] = row[x][1];
-            nchw[2 * plane + index] = row[x][2];
+            if (i)
+                std::cerr << ',';
+            std::cerr << nchw[i];
         }
+        std::cerr << '\n';
     }
 
     return true;
@@ -279,7 +330,11 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
 {
     std::vector<Detection> detections;
     if (output.shape.size() != 3)
+    {
+        if (DebugDecodeEnabled())
+            std::cerr << "[decode] unsupported output rank=" << output.shape.size() << '\n';
         return detections;
+    }
 
     const int64_t dim1 = output.shape[1];
     const int64_t dim2 = output.shape[2];
@@ -295,30 +350,41 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
     int64_t channels = 0;
     int64_t anchors = 0;
 
-    if (options_.decode_mode == "vendor" || (options_.decode_mode == "auto" && dim1 >= 6 && dim1 <= 256))
+    if (dim2 == 6 && dim1 > 6)
+    {
+        layout = Layout::kBoxesLast;
+        anchors = dim1;
+        channels = dim2;
+    }
+    else if (dim1 > 0 && dim1 <= dim2)
     {
         layout = Layout::kChannelsFirst;
         channels = dim1;
         anchors = dim2;
     }
-    else if (options_.decode_mode == "ultralytics" || (options_.decode_mode == "auto" && dim2 >= 6 && dim2 <= 256))
+    else if (dim2 > 0 && dim2 < dim1)
     {
         layout = Layout::kAnchorsFirst;
         anchors = dim1;
         channels = dim2;
     }
 
-    if (channels == 6 && anchors > 0)
-        layout = (layout == Layout::kChannelsFirst) ? Layout::kBoxesLast : Layout::kBoxesLast;
-
     auto access = [&](int64_t anchor_idx, int64_t channel_idx) -> float {
-        if (layout == Layout::kChannelsFirst || layout == Layout::kBoxesLast)
+        if (layout == Layout::kChannelsFirst)
             return output.data[static_cast<size_t>(channel_idx * anchors + anchor_idx)];
         return output.data[static_cast<size_t>(anchor_idx * channels + channel_idx)];
     };
 
     if (layout == Layout::kUnknown)
+    {
+        if (DebugDecodeEnabled())
+            std::cerr << "[decode] unknown layout for shape=[" << output.shape[0] << ','
+                      << output.shape[1] << ',' << output.shape[2] << "]\n";
         return detections;
+    }
+
+    int kept_before_nms = 0;
+    std::vector<std::string> top_samples;
 
     for (int64_t anchor = 0; anchor < anchors; ++anchor)
     {
@@ -356,10 +422,10 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
             const float cy = access(anchor, 1);
             const float w = access(anchor, 2);
             const float h = access(anchor, 3);
-            det.x1 = (cx - w * 0.5f - info.dw) / info.ratio;
-            det.y1 = (cy - h * 0.5f - info.dh) / info.ratio;
-            det.x2 = (cx + w * 0.5f - info.dw) / info.ratio;
-            det.y2 = (cy + h * 0.5f - info.dh) / info.ratio;
+            det.x1 = (cx - w * 0.5f - info.pad_x) * info.scale_x;
+            det.y1 = (cy - h * 0.5f - info.pad_y) * info.scale_y;
+            det.x2 = (cx + w * 0.5f - info.pad_x) * info.scale_x;
+            det.y2 = (cy + h * 0.5f - info.pad_y) * info.scale_y;
             det.class_id = max_class;
             det.score = max_score;
         }
@@ -369,9 +435,42 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
         det.x2 = std::clamp(det.x2, 0.f, static_cast<float>(info.src_w - 1));
         det.y2 = std::clamp(det.y2, 0.f, static_cast<float>(info.src_h - 1));
         detections.push_back(det);
+        kept_before_nms += 1;
+        if (DebugDecodeEnabled() && top_samples.size() < 8)
+        {
+            std::ostringstream oss;
+            oss.setf(std::ios::fixed);
+            oss.precision(3);
+            oss << "anchor=" << anchor
+                << " cls=" << det.class_id
+                << " score=" << det.score
+                << " box=[" << det.x1 << ',' << det.y1 << ',' << det.x2 << ',' << det.y2 << ']';
+            top_samples.push_back(oss.str());
+        }
     }
 
-    return NmsClasswise(detections, options_.iou_threshold);
+    std::vector<Detection> final_detections = NmsClasswise(detections, options_.iou_threshold);
+    if (DebugDecodeEnabled())
+    {
+        std::cerr << "[decode] shape=[" << output.shape[0] << ',' << output.shape[1] << ','
+                  << output.shape[2] << "] layout=";
+        if (layout == Layout::kChannelsFirst)
+            std::cerr << "channels_first";
+        else if (layout == Layout::kAnchorsFirst)
+            std::cerr << "anchors_first";
+        else
+            std::cerr << "boxes_last";
+        std::cerr << " channels=" << channels
+                  << " anchors=" << anchors
+                  << " conf=" << options_.conf_threshold
+                  << " pre_nms=" << kept_before_nms
+                  << " post_nms=" << final_detections.size()
+                  << " preprocess=" << (info.mode == PreprocessMode::kResize ? "resize" : "letterbox")
+                  << '\n';
+        for (const auto& sample : top_samples)
+            std::cerr << "[decode] " << sample << '\n';
+    }
+    return final_detections;
 }
 
 InferenceResult Yolo11Detector::ProcessImage(const cv::Mat& bgr, bool render_output)
@@ -524,9 +623,9 @@ std::string Yolo11Detector::ProviderSummary() const
             oss << ",";
         oss << input_shape_[i];
     }
-    oss << "]";
+    oss << "]"
+        << " preprocess=" << (ResolvePreprocessMode() == PreprocessMode::kResize ? "resize" : "letterbox");
     return oss.str();
 }
 
 }  // namespace banana_demo
-

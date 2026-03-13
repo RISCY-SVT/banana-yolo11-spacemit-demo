@@ -30,6 +30,11 @@ The application supports:
 - annotated image/video output
 - per-stage metrics logging
 
+The repository is intentionally usable in two modes:
+
+- host-wrapper mode from the x86_64 cross-build container
+- board-local mode directly on Banana after deploy
+
 ## Project layout
 
 - `src/`, `include/`: C++ application
@@ -138,6 +143,11 @@ CALIB_COUNT=10 \
 ./scripts/build_cross.sh
 ```
 
+The build helper now checks OpenCV explicitly through `./scripts/ensure_opencv.sh`.
+This repository does not vendor OpenCV. It expects the canonical local cross install
+at `/data/opencv/install-k1x-gtk3`, and deploy stages the matching runtime libraries
+under the board-side repo root.
+
 ## Deploy to Banana
 
 ```bash
@@ -156,6 +166,13 @@ The image helper accepts optional positional overrides:
 ./scripts/run_image_demo.sh <image> <model> <input_size> <conf>
 ```
 
+Board-local direct execution after deploy:
+
+```bash
+cd /home/svt/banana-yolo11-spacemit-demo
+BANANA_DEMO_EXEC_MODE=board ./scripts/run_image_demo.sh
+```
+
 ## Run camera demo
 
 ```bash
@@ -166,7 +183,20 @@ The image helper accepts optional positional overrides:
 Useful environment overrides:
 
 ```bash
-DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.01 ./scripts/run_camera_demo.sh /dev/video20
+DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.05 ./scripts/run_camera_demo.sh /dev/video20
+```
+
+By default the camera helper does not record video. Recording is opt-in:
+
+```bash
+SAVE_OUTPUT_REMOTE=/home/svt/banana-yolo11-spacemit-demo/outputs/camera_320.avi ./scripts/run_camera_demo.sh /dev/video20
+```
+
+Board-local direct execution after deploy:
+
+```bash
+cd /home/svt/banana-yolo11-spacemit-demo
+BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh /dev/video20
 ```
 
 ## Benchmark
@@ -210,6 +240,8 @@ The binary supports:
 
 - 320x320 production model:
   - `models/vendor/yolo11/yolov11n_320x320.q.onnx`
+- validated demo confidence for this vendor 320x320 path:
+  - `0.05`
 - Board app root after deploy:
   - `/home/svt/banana-yolo11-spacemit-demo`
 - Required photo for reproducible image tests:
@@ -225,8 +257,10 @@ The binary supports:
     - `WAYLAND_DISPLAY=wayland-0` when present
     - `/run/user/<uid>/.mutter-Xwaylandauth.*` plus `DISPLAY=:0`
   - if GUI still fails, fall back to `--display 0 --headless 1`
-- No detections on the required photo:
-  - this image may need a lower confidence threshold such as `0.01`
+- Vendor 320x320 detections look wrong or disappear:
+  - use `--preprocess-mode resize` for the official vendor model
+  - keep the validated default `--conf 0.05`
+  - `--conf 0.01` is a debug threshold and is no longer the recommended demo default
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
 

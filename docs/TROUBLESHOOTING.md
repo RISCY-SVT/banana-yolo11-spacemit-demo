@@ -19,14 +19,27 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 
 ## Cross build cannot find OpenCV
 
+- Run `./scripts/ensure_opencv.sh` first.
 - Ensure `/data/opencv/install-k1x-gtk3/lib/cmake/opencv4/OpenCVConfig.cmake` exists.
 - Rebuild the local K1X OpenCV install if needed.
+- The repository stages matching OpenCV runtime libraries under the deployed board repo, so do not rely on an accidental system OpenCV match.
 
 ## Camera open fails
 
 - Run `./scripts/detect_camera_formats.sh /dev/video0`.
 - Try `--camera-pixfmt mjpg` or `--camera-pixfmt yuyv`.
 - Prefer MJPG if the camera supports it at higher FPS.
+
+## Vendor 320x320 detections are missing or look suspicious
+
+- Use the official vendor model with `--preprocess-mode resize`.
+- Keep `--conf 0.05` for normal demo use.
+- Use `--conf 0.01` only for debugging or score-distribution inspection.
+- If you need to inspect decode behavior, set:
+
+```bash
+BANANA_DEMO_DEBUG_DECODE=1
+```
 
 ## xquant is slow or pulls a huge dependency chain
 

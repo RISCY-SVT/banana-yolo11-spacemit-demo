@@ -6,6 +6,7 @@ BUILD_DIR="${ROOT_DIR}/build/k1x-release"
 INSTALL_DIR="${ROOT_DIR}/install/k1x-release"
 
 source /data/build_scripts/01-env.sh
+"${ROOT_DIR}/scripts/ensure_opencv.sh"
 "${ROOT_DIR}/scripts/fetch_vendor_runtime.sh"
 
 if [[ ! -f /data/opencv/install-k1x-gtk3/lib/cmake/opencv4/OpenCVConfig.cmake ]]; then
@@ -24,4 +25,3 @@ cmake -S "${ROOT_DIR}" -B "${BUILD_DIR}" \
 cmake --build "${BUILD_DIR}" -j"$(nproc)"
 cmake --install "${BUILD_DIR}"
 file "${INSTALL_DIR}/bin/banana_yolo11_demo"
-

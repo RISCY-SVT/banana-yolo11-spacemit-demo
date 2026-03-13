@@ -65,15 +65,23 @@ public:
     std::string ProviderSummary() const;
 
 private:
+    enum class PreprocessMode
+    {
+        kLetterbox,
+        kResize,
+    };
+
     struct PreprocessInfo
     {
         int src_w = 0;
         int src_h = 0;
         int dst_w = 0;
         int dst_h = 0;
-        float ratio = 1.f;
-        float dw = 0.f;
-        float dh = 0.f;
+        float scale_x = 1.f;
+        float scale_y = 1.f;
+        float pad_x = 0.f;
+        float pad_y = 0.f;
+        PreprocessMode mode = PreprocessMode::kLetterbox;
     };
 
     struct OutputTensor
@@ -85,6 +93,7 @@ private:
     void LoadLabels();
     void ResolveInputShape();
     void BuildSession();
+    PreprocessMode ResolvePreprocessMode() const;
     bool PreprocessToNchw(const cv::Mat& bgr, std::vector<float>& nchw, PreprocessInfo& info) const;
     OutputTensor RunSingle(const std::vector<float>& nchw) const;
     std::vector<Detection> Decode(const OutputTensor& output, const PreprocessInfo& info) const;
@@ -104,4 +113,3 @@ private:
 };
 
 }  // namespace banana_demo
-

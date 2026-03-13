@@ -13,7 +13,7 @@ struct AppOptions
     std::string provider = "spacemit";
     std::string pin = "cluster0";
     int threads = 4;
-    float conf_threshold = 0.25f;
+    float conf_threshold = 0.05f;
     float iou_threshold = 0.45f;
     int display = 1;
     std::string save_output;
@@ -26,6 +26,7 @@ struct AppOptions
     int camera_fps = 30;
     std::string camera_pixfmt = "auto";
     std::string decode_mode = "auto";
+    std::string preprocess_mode = "auto";
     int warmup = 10;
     int runs = 100;
     int repeats = 5;
@@ -41,4 +42,3 @@ bool ParseAppOptions(int argc, char** argv, AppOptions& options, std::string& er
 std::string BuildUsage();
 
 }  // namespace banana_demo
-
