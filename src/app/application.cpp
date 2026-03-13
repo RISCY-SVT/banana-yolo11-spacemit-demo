@@ -224,6 +224,7 @@ int Application::RunCameraMode()
     logger.Info("camera_source=" + source.Describe());
     logger.Info("camera_size=" + std::to_string(source.FrameWidth()) + "x" + std::to_string(source.FrameHeight()));
     logger.Info("camera_fps=" + std::to_string(source.Fps()));
+    logger.Info("camera_pixfmt=" + source.PixelFormat());
     logger.Info(detector.ProviderSummary());
 
     cv::VideoWriter writer;

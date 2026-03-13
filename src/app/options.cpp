@@ -188,7 +188,7 @@ std::string BuildUsage()
         << "  --model <path>\n"
         << "  --labels <path>\n"
         << "  --input-size 320|640\n"
-        << "  --source image:<path>|camera:/dev/video0\n"
+        << "  --source image:<path>|camera:auto|camera:/dev/videoN|camera:<index>\n"
         << "  --provider spacemit|cpu\n"
         << "  --pin cluster0|cluster1|none|list:<csv>\n"
         << "  --threads <N>\n"
@@ -215,17 +215,17 @@ std::string BuildUsage()
         << "  --max-frames <N>\n"
         << '\n'
         << "Notes:\n"
-        << "  - The official vendor 320x320 YOLO11 model in this repository is run with preprocess-mode=resize.\n"
-        << "  - The validated demo default confidence for the vendor 320x320 path is 0.05.\n"
-        << "    Lower values such as 0.01 are kept for debugging only.\n"
+        << "  - Default visual demo scripts in this repository use the generated 640x640 dynamic INT8 model.\n"
+        << "  - The official vendor 320x320 INT8 model remains available as a low-latency benchmark path.\n"
         << "  - Custom Ultralytics/xquant models should normally use preprocess-mode=letterbox.\n"
+        << "  - camera:auto prefers stable /dev/v4l/by-id or /dev/v4l/by-path capture nodes.\n"
         << '\n'
         << "Examples:\n"
-        << "  banana_yolo11_demo --model models/vendor/yolov11n_320x320.q.onnx "
-           "--source image:photo_2024-10-11_10-04-04.jpg --input-size 320 --provider spacemit "
-           "--preprocess-mode resize\n"
+        << "  banana_yolo11_demo --model models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx "
+           "--source image:photo_2024-10-11_10-04-04.jpg --input-size 640 --provider spacemit "
+           "--preprocess-mode letterbox\n"
         << "  banana_yolo11_demo --model models/generated/yolov11n_640x640.q.onnx "
-           "--source camera:/dev/video0 --input-size 640 --camera-pixfmt mjpg --display 1 "
+           "--source camera:auto --input-size 640 --camera-pixfmt mjpg --display 1 "
            "--preprocess-mode letterbox\n";
     return oss.str();
 }

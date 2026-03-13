@@ -5,7 +5,6 @@
 
 #include "spacemit_ort_env.h"
 
-#include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
 
 #include <algorithm>
@@ -270,11 +269,21 @@ bool Yolo11Detector::PreprocessToNchw(const cv::Mat& bgr, std::vector<float>& nc
         cv::copyMakeBorder(rgb, preprocessed, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
     }
 
-    nchw.resize(static_cast<size_t>(input_width_) * static_cast<size_t>(input_height_) * 3u);
-    cv::Mat blob = cv::dnn::blobFromImage(preprocessed, 1.f / 255.f,
-                                          cv::Size(input_width_, input_height_),
-                                          cv::Scalar(), false, false, CV_32F);
-    std::copy(blob.begin<float>(), blob.end<float>(), nchw.begin());
+    cv::Mat float_rgb;
+    preprocessed.convertTo(float_rgb, CV_32FC3, 1.f / 255.f);
+
+    const size_t plane_size = static_cast<size_t>(input_width_) * static_cast<size_t>(input_height_);
+    nchw.resize(plane_size * 3u);
+    for (int c = 0; c < 3; ++c)
+    {
+        float* out = nchw.data() + plane_size * static_cast<size_t>(c);
+        for (int y = 0; y < input_height_; ++y)
+        {
+            const cv::Vec3f* row = float_rgb.ptr<cv::Vec3f>(y);
+            for (int x = 0; x < input_width_; ++x)
+                *out++ = row[x][c];
+        }
+    }
 
     if (DebugDecodeEnabled())
     {

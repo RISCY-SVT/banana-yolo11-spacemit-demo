@@ -13,7 +13,7 @@ struct AppOptions
     std::string provider = "spacemit";
     std::string pin = "cluster0";
     int threads = 4;
-    float conf_threshold = 0.05f;
+    float conf_threshold = 0.25f;
     float iou_threshold = 0.45f;
     int display = 1;
     std::string save_output;

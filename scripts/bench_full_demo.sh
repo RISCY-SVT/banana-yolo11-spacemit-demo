@@ -4,9 +4,25 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+usage() {
+  cat <<'EOF'
+Usage:
+  bench_full_demo.sh [model_path] [input_size] [image_path]
+
+Default benchmark path:
+  - model: official vendor 320x320 INT8
+  - input size: 320
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
 if banana_demo_is_board_mode; then
   REPO_DIR="$(banana_demo_board_root)"
-  MODEL_PATH="${1:-${MODEL_PATH:-${REPO_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}}"
+  MODEL_PATH="${1:-${MODEL_PATH:-$(banana_demo_default_benchmark_model "${REPO_DIR}")}}"
   INPUT_SIZE="${2:-${INPUT_SIZE:-320}}"
   IMAGE_PATH="${3:-${IMAGE_PATH:-$(banana_demo_resolve_default_image "${REPO_DIR}")}}"
   LOG_FILE="${LOG_FILE:-${REPO_DIR}/logs/bench_full_${INPUT_SIZE}.log}"
@@ -37,7 +53,7 @@ TARGET="$(banana_demo_host_target)"
 BOARD_DIR="$(banana_demo_host_board_dir)"
 "${ROOT_DIR}/scripts/deploy_to_banana.sh"
 
-MODEL_PATH="${1:-${BOARD_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}"
+MODEL_PATH="${1:-$(banana_demo_default_benchmark_model "${BOARD_DIR}")}"
 INPUT_SIZE="${2:-320}"
 IMAGE_PATH="${3:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
 REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"

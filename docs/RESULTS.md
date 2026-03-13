@@ -4,14 +4,14 @@ This file is updated after board validation.
 
 - Image demo
   - Required image: `/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg`
-  - Vendor INT8 320x320 path is validated on board with `preprocess=resize`.
-  - The required photo produces a stable person detection at the recommended `--conf 0.05`.
-  - A synthetic white-wall input is clean at `--conf 0.05` and above.
-  - Custom dynamic INT8 640x640 path also works on board.
+  - Vendor INT8 320x320 remains a benchmark-oriented path on the public vendor stack.
+  - On the canonical photo, the public vendor 320x320 path is not strong enough to keep as the default visual demo path.
+  - The default visual demo path is the custom dynamic INT8 640x640 path.
   - A cleaner 640 sample was captured at `--conf 0.25`.
 
 - Camera demo
-  - USB camera `/dev/video20` works in MJPG mode.
+  - Default camera auto-selection resolves the USB camera through `/dev/v4l/by-id/... -> /dev/video20`.
+  - The default camera auto mode chooses MJPG for `1280x720` because it offers `60 FPS` on the connected USB camera, versus `7.5 FPS` for YUYV.
   - Headless live inference is stable.
   - Default camera runs no longer create AVI output unless explicitly requested.
   - Display mode requires a valid desktop session plus Wayland/Xwayland session variables.
@@ -48,9 +48,9 @@ This file is updated after board validation.
     - end-to-end loop `7.486739 FPS`
 
 - Remediation notes
-  - The original vendor 320x320 path was only performance-validated. A remediation pass fixed the decode path and the deployed defaults.
-  - The repository now treats `0.05` as the recommended vendor 320x320 demo confidence.
-  - `0.01` remains available for debugging but is intentionally no longer the default.
+  - The original vendor 320x320 path was only performance-validated. Follow-up forensic work showed that it is still not trustworthy enough to remain the default visual demo path on the public stack.
+  - The repository now treats vendor 320x320 as the benchmark and low-latency path, while the default user-facing visual demo path is 640x640 dynamic INT8.
+  - Demo defaults now use sane auto camera selection, sane auto MJPG selection, and no AVI recording unless explicitly requested.
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

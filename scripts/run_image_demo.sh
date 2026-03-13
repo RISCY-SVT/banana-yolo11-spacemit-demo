@@ -4,12 +4,31 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+usage() {
+  cat <<'EOF'
+Usage:
+  run_image_demo.sh [image_path] [model_path] [input_size] [conf] [display] [headless] [save_output] [log_file]
+
+Default visual demo path:
+  - model: generated 640x640 dynamic INT8
+  - input size: 640
+  - confidence: 0.25
+
+For the low-latency vendor 320x320 benchmark path, override the model explicitly.
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
 if banana_demo_is_board_mode; then
   REPO_DIR="$(banana_demo_board_root)"
   IMAGE_PATH="${1:-${IMAGE_PATH:-$(banana_demo_resolve_default_image "${REPO_DIR}")}}"
-  MODEL_PATH="${2:-${MODEL_PATH:-${REPO_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}}"
-  INPUT_SIZE="${3:-${INPUT_SIZE:-320}}"
-  CONFIDENCE="${4:-${CONFIDENCE:-0.05}}"
+  MODEL_PATH="${2:-${MODEL_PATH:-$(banana_demo_default_visual_model "${REPO_DIR}")}}"
+  INPUT_SIZE="${3:-${INPUT_SIZE:-$(banana_demo_default_visual_input_size)}}"
+  CONFIDENCE="${4:-${CONFIDENCE:-0.25}}"
   DISPLAY_FLAG="${5:-${DISPLAY_FLAG:-0}}"
   HEADLESS_FLAG="${6:-${HEADLESS_FLAG:-$((1-DISPLAY_FLAG))}}"
   SAVE_OUTPUT="${7:-${SAVE_OUTPUT:-${REPO_DIR}/outputs/image_${INPUT_SIZE}.jpg}}"
@@ -42,9 +61,9 @@ BOARD_DIR="$(banana_demo_host_board_dir)"
 "${ROOT_DIR}/scripts/deploy_to_banana.sh"
 
 IMAGE_PATH="${1:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
-MODEL_PATH="${2:-${BOARD_DIR}/models/vendor/yolo11/yolov11n_320x320.q.onnx}"
-INPUT_SIZE="${3:-320}"
-CONFIDENCE="${4:-${CONFIDENCE:-0.05}}"
+MODEL_PATH="${2:-$(banana_demo_default_visual_model "${BOARD_DIR}")}"
+INPUT_SIZE="${3:-${INPUT_SIZE:-$(banana_demo_default_visual_input_size)}}"
+CONFIDENCE="${4:-${CONFIDENCE:-0.25}}"
 DISPLAY_FLAG="${DISPLAY_FLAG:-0}"
 HEADLESS_FLAG="${HEADLESS_FLAG:-$((1-DISPLAY_FLAG))}"
 SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-${BOARD_DIR}/outputs/image_${INPUT_SIZE}.jpg}"

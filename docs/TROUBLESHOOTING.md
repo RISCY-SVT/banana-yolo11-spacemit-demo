@@ -26,14 +26,14 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 
 ## Camera open fails
 
-- Run `./scripts/detect_camera_formats.sh /dev/video0`.
+- Run `./scripts/detect_camera_formats.sh` first and use the reported resolved capture node if needed.
 - Try `--camera-pixfmt mjpg` or `--camera-pixfmt yuyv`.
 - Prefer MJPG if the camera supports it at higher FPS.
 
 ## Vendor 320x320 detections are missing or look suspicious
 
-- Use the official vendor model with `--preprocess-mode resize`.
-- Keep `--conf 0.05` for normal demo use.
+- Use the official vendor model only when you explicitly want the low-latency benchmark path.
+- For the default visual demo path, keep the generated 640x640 dynamic INT8 model and `--conf 0.25`.
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 

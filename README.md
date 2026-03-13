@@ -14,9 +14,9 @@ The repository is designed to be usable by another engineer from scratch once th
 - Host build: Ubuntu 24.04 x86_64 cross-build container
 - Target board: Banana Pi BPI-F3 / SpacemiT K1X
 - Runtime: vendor `spacemit-ort.riscv64.2.0.1` + `libspacemit_ep.so.2.0.1`
-- Primary model path:
+- Benchmark model path:
   - official vendor YOLO11n INT8 320x320 ONNX
-- Secondary model path:
+- Default visual demo path:
   - Ultralytics ONNX export
   - xquant-based INT8 conversion for custom sizes such as 640x640
 
@@ -105,7 +105,8 @@ Outputs land under `models/vendor/yolo11/`.
 
 Notes:
 
-- Official vendor INT8 320x320 is the default production path.
+- The official vendor INT8 320x320 model remains the benchmark and low-latency path.
+- The default visual demo path in this repository is the generated 640x640 dynamic INT8 model because it is the more trustworthy user-facing path on the public stack.
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
 
@@ -160,6 +161,12 @@ under the board-side repo root.
 ./scripts/run_image_demo.sh
 ```
 
+The no-argument image demo uses the default visual path:
+
+- model: `models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx`
+- input size: `640`
+- confidence: `0.25`
+
 The image helper accepts optional positional overrides:
 
 ```bash
@@ -176,14 +183,14 @@ BANANA_DEMO_EXEC_MODE=board ./scripts/run_image_demo.sh
 ## Run camera demo
 
 ```bash
-./scripts/detect_camera_formats.sh /dev/video0
-./scripts/run_camera_demo.sh /dev/video0
+./scripts/detect_camera_formats.sh
+./scripts/run_camera_demo.sh
 ```
 
 Useful environment overrides:
 
 ```bash
-DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.05 ./scripts/run_camera_demo.sh /dev/video20
+DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.25 ./scripts/run_camera_demo.sh /dev/video20
 ```
 
 By default the camera helper does not record video. Recording is opt-in:
@@ -196,7 +203,7 @@ Board-local direct execution after deploy:
 
 ```bash
 cd /home/svt/banana-yolo11-spacemit-demo
-BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh /dev/video20
+BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh
 ```
 
 ## Benchmark
@@ -222,7 +229,7 @@ The binary supports:
 - `--model`
 - `--labels`
 - `--input-size 320|640`
-- `--source image:<path>|camera:/dev/video0`
+- `--source image:<path>|camera:auto|camera:/dev/videoN|camera:<index>`
 - `--provider spacemit|cpu`
 - `--pin cluster0|cluster1|none|list:<csv>`
 - `--threads`
@@ -238,10 +245,12 @@ The binary supports:
 
 ## Known-good defaults
 
-- 320x320 production model:
+- Default visual demo model:
+  - `models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx`
+- Default visual demo confidence:
+  - `0.25`
+- Vendor low-latency benchmark model:
   - `models/vendor/yolo11/yolov11n_320x320.q.onnx`
-- validated demo confidence for this vendor 320x320 path:
-  - `0.05`
 - Board app root after deploy:
   - `/home/svt/banana-yolo11-spacemit-demo`
 - Required photo for reproducible image tests:
@@ -258,9 +267,9 @@ The binary supports:
     - `/run/user/<uid>/.mutter-Xwaylandauth.*` plus `DISPLAY=:0`
   - if GUI still fails, fall back to `--display 0 --headless 1`
 - Vendor 320x320 detections look wrong or disappear:
-  - use `--preprocess-mode resize` for the official vendor model
-  - keep the validated default `--conf 0.05`
-  - `--conf 0.01` is a debug threshold and is no longer the recommended demo default
+  - treat the vendor 320x320 path as the benchmark and low-latency path on the public stack
+  - use the default 640x640 dynamic INT8 path for user-facing image and camera demos
+  - keep the vendor 320x320 path explicit, not implicit, when you need performance comparisons
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
 

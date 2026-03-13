@@ -33,6 +33,20 @@ banana_demo_host_board_dir() {
   printf '%s\n' "${BOARD_DIR:-/home/svt/banana-yolo11-spacemit-demo}"
 }
 
+banana_demo_default_visual_model() {
+  local repo_root="$1"
+  printf '%s\n' "${repo_root}/models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx"
+}
+
+banana_demo_default_visual_input_size() {
+  printf '640\n'
+}
+
+banana_demo_default_benchmark_model() {
+  local repo_root="$1"
+  printf '%s\n' "${repo_root}/models/vendor/yolo11/yolov11n_320x320.q.onnx"
+}
+
 banana_demo_join_colon_paths() {
   local out=""
   local item
@@ -73,6 +87,131 @@ banana_demo_prepare_display_env() {
       break
     done
   fi
+}
+
+banana_demo_parse_video_index() {
+  local candidate="${1:-}"
+  if [[ "${candidate}" =~ ^/dev/video([0-9]+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  return 1
+}
+
+banana_demo_resolve_camera_path() {
+  local candidate="${1:-}"
+  if [[ -z "${candidate}" || "${candidate}" == "auto" ]]; then
+    return 1
+  fi
+
+  if [[ "${candidate}" =~ ^[0-9]+$ ]]; then
+    printf '/dev/video%s\n' "${candidate}"
+    return 0
+  fi
+
+  if [[ -e "${candidate}" ]]; then
+    readlink -f "${candidate}"
+    return 0
+  fi
+
+  printf '%s\n' "${candidate}"
+}
+
+banana_demo_default_camera_path() {
+  local candidate
+
+  for candidate in /dev/v4l/by-id/*video-index0; do
+    [[ -e "${candidate}" ]] || continue
+    printf '%s\n' "${candidate}"
+    return 0
+  done
+
+  for candidate in /dev/v4l/by-path/*video-index0; do
+    [[ -e "${candidate}" ]] || continue
+    printf '%s\n' "${candidate}"
+    return 0
+  done
+
+  if command -v v4l2-ctl >/dev/null 2>&1; then
+    local chosen
+    chosen="$(
+      v4l2-ctl --list-devices 2>/dev/null | awk '
+        /^[^ \t].*:$/ {header=$0; next}
+        /^[ \t]+\/dev\/video[0-9]+$/ {
+          node=$1
+          if (header ~ /(usb|USB)/ && chosen == "") {
+            chosen=node
+          }
+        }
+        END {
+          if (chosen != "")
+            print chosen
+        }'
+    )"
+    if [[ -n "${chosen}" ]]; then
+      printf '%s\n' "${chosen}"
+      return 0
+    fi
+  fi
+
+  for candidate in /dev/video*; do
+    [[ -e "${candidate}" ]] || continue
+    printf '%s\n' "${candidate}"
+    return 0
+  done
+
+  return 1
+}
+
+banana_demo_choose_camera_pixfmt() {
+  local camera_path="${1:-}"
+  local camera_width="${2:-1280}"
+  local camera_height="${3:-720}"
+
+  if ! command -v v4l2-ctl >/dev/null 2>&1; then
+    printf 'auto\n'
+    return 0
+  fi
+
+  local resolved
+  resolved="$(banana_demo_resolve_camera_path "${camera_path}")" || {
+    printf 'auto\n'
+    return 0
+  }
+
+  local formats
+  formats="$(v4l2-ctl -d "${resolved}" --list-formats-ext 2>/dev/null || true)"
+  [[ -n "${formats}" ]] || {
+    printf 'auto\n'
+    return 0
+  }
+
+  local exact_size="${camera_width}x${camera_height}"
+  if printf '%s\n' "${formats}" | awk -v fmt="MJPG" -v size="${exact_size}" '
+      $0 ~ "\\047" fmt "\\047" {in_fmt=1; next}
+      /^[ \t]*\\[[0-9]+\\]:/ {in_fmt=0}
+      in_fmt && index($0, "Size: Discrete " size) {found=1}
+      END {exit(found ? 0 : 1)}'; then
+    printf 'mjpg\n'
+    return 0
+  fi
+  if printf '%s\n' "${formats}" | awk -v fmt="YUYV" -v size="${exact_size}" '
+      $0 ~ "\\047" fmt "\\047" {in_fmt=1; next}
+      /^[ \t]*\\[[0-9]+\\]:/ {in_fmt=0}
+      in_fmt && index($0, "Size: Discrete " size) {found=1}
+      END {exit(found ? 0 : 1)}'; then
+    printf 'yuyv\n'
+    return 0
+  fi
+  if printf '%s\n' "${formats}" | grep -q "'MJPG'"; then
+    printf 'mjpg\n'
+    return 0
+  fi
+  if printf '%s\n' "${formats}" | grep -q "'YUYV'"; then
+    printf 'yuyv\n'
+    return 0
+  fi
+  printf 'auto\n'
 }
 
 banana_demo_unset_parallel_env() {
