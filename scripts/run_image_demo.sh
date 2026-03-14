@@ -15,9 +15,11 @@ Default visual demo path:
   - confidence: 0.25
 
 Vendor 320x320 note:
-  - the tarball 2.0.1 path remains useful for low-latency benchmarking
-  - it is not restored as the default trustworthy visual demo path
-  - use the generated 640x640 path for the user-facing visual demo
+  - visual runs auto-select the validated rt123 stack
+  - low-latency benchmark runs can still force rt201 via BANANA_DEMO_RUNTIME_TAG=rt201
+
+Environment overrides:
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
 EOF
 }
 
@@ -37,15 +39,18 @@ if banana_demo_is_board_mode; then
   SAVE_OUTPUT="${7:-${SAVE_OUTPUT:-${REPO_DIR}/outputs/image_${INPUT_SIZE}.jpg}}"
   LOG_FILE="${8:-${LOG_FILE:-${REPO_DIR}/logs/image_${INPUT_SIZE}.log}}"
   QUIET="${QUIET:-0}"
+  RUNTIME_TAG="$(banana_demo_resolve_runtime_tag "${MODEL_PATH}" "visual")"
+  APP_BIN="$(banana_demo_binary_path "${REPO_DIR}" "${RUNTIME_TAG}")"
 
   mkdir -p "$(dirname "${SAVE_OUTPUT}")" "$(dirname "${LOG_FILE}")"
-  banana_demo_export_runtime_env "${REPO_DIR}"
+  banana_demo_export_runtime_env "${REPO_DIR}" "${RUNTIME_TAG}"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
-  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
-    echo "WARN: vendor320 on tarball 2.0.1 is benchmark-valid but not a trusted visual default; prefer the default 640 dynamic path for user-facing demos." >&2
+  echo "runtime_tag=${RUNTIME_TAG}" >&2
+  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${RUNTIME_TAG}" == "rt201" ]] && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
+    echo "WARN: vendor320 on rt201 remains perf-oriented; prefer the default visual auto-selection (rt123) unless you explicitly want the low-latency benchmark stack." >&2
   fi
 
-  exec "${REPO_DIR}/bin/banana_yolo11_demo" \
+  exec "${APP_BIN}" \
     --model "${MODEL_PATH}" \
     --labels "${REPO_DIR}/assets/coco80.txt" \
     --input-size "${INPUT_SIZE}" \
@@ -76,13 +81,15 @@ SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-${BOARD_DIR}/outputs/image_${INPUT_SIZ
 LOG_FILE_REMOTE="${LOG_FILE_REMOTE:-${BOARD_DIR}/logs/image_${INPUT_SIZE}.log}"
 
 REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"
+REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
 
 ssh "${TARGET}" "cd '${BOARD_DIR}' && \
   BANANA_DEMO_EXEC_MODE=board \
   QUIET=0 \
+  BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' \
   ./scripts/run_image_demo.sh \
     '${REMOTE_IMAGE_PATH}' \
-    '${MODEL_PATH}' \
+    '${REMOTE_MODEL_PATH}' \
     '${INPUT_SIZE}' \
     '${CONFIDENCE}' \
     '${DISPLAY_FLAG}' \

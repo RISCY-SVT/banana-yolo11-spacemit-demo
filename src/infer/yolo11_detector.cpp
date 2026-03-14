@@ -212,11 +212,6 @@ Yolo11Detector::PreprocessMode Yolo11Detector::ResolvePreprocessMode() const
         return PreprocessMode::kLetterbox;
     if (options_.preprocess_mode == "resize")
         return PreprocessMode::kResize;
-
-    const std::string model_name = std::filesystem::path(options_.model).filename().string();
-    if (model_name == "yolov11n_320x320.q.onnx" || model_name == "yolov11n_320x320.onnx")
-        return PreprocessMode::kResize;
-
     return PreprocessMode::kLetterbox;
 }
 

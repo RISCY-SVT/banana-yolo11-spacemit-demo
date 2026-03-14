@@ -4,9 +4,9 @@ This file is updated after board validation.
 
 - Image demo
   - Required image: `/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg`
-  - Vendor INT8 320x320 remains a benchmark-oriented path on the public vendor stack.
-  - On the canonical photo, the public vendor 320x320 path is not strong enough to keep as the default visual demo path.
-  - The default visual demo path is the custom dynamic INT8 640x640 path.
+  - Vendor INT8 320x320 is now validated as a trustworthy visual path on runtime `rt123` (`spacemit-ort.riscv64.1.2.3`) with letterbox preprocessing.
+  - Vendor INT8 320x320 remains the low-latency benchmark path on runtime `rt201` (`spacemit-ort.riscv64.2.0.1`).
+  - The default visual demo path remains the custom dynamic INT8 640x640 path because it is still the best user-facing quality path.
   - A cleaner 640 sample was captured at `--conf 0.25`.
 
 - Camera demo
@@ -18,44 +18,49 @@ This file is updated after board validation.
   - A display probe reached the application branch `display active, press any key to exit`.
 
 - Forward-only benchmark
-  - Vendor `onnxruntime_perf_test` 320x320 INT8:
-    - `25.1677 ms`
-    - `39.7235 FPS`
-  - Application forward-only 320x320 INT8:
-    - `25.805506 ms`
-    - `38.751420 FPS`
-  - Application forward-only 320x320 INT8 rerun:
-    - `25.926897 ms`
-    - `38.569984 FPS`
+  - Vendor320 perf stack (`rt201`) `onnxruntime_perf_test`:
+    - `25.4561 ms`
+    - `39.2748 FPS`
+  - Vendor320 perf stack (`rt201`) application forward-only:
+    - `25.821000 ms`
+    - `38.728167 FPS`
+  - Vendor320 visual stack (`rt123`) `onnxruntime_perf_test`:
+    - `49.4587 ms`
+    - `20.2038 FPS`
+  - Vendor320 visual stack (`rt123`) application forward-only:
+    - `50.248301 ms`
+    - `19.901171 FPS`
   - Custom dynamic INT8 640x640 `onnxruntime_perf_test`:
-    - `201.07 ms`
-    - `4.97323 FPS`
+    - `201.162 ms`
+    - `4.97096 FPS`
   - Custom dynamic INT8 640x640 application forward-only:
-    - `200.732224 ms`
-    - `4.981761 FPS`
+    - `203.832438 ms`
+    - `4.905990 FPS`
 
 - Full pipeline benchmark
   - Application full pipeline includes preprocess + inference + postprocess.
-  - Application full pipeline 320x320 INT8:
-    - `34.473185 ms`
-    - `29.008054 FPS`
+  - Vendor320 visual stack (`rt123`) application full pipeline:
+    - `60.926593 ms`
+    - `16.413194 FPS`
   - Application full pipeline 640x640 dynamic INT8:
-    - `244.256647 ms`
-    - `4.094054 FPS`
-  - Camera runs around `20-22 FPS` per frame on the inference loop at 320x320, with lower end-to-end FPS once capture and AVI writing are included.
-  - A 60-frame MJPG headless camera run completed at:
-    - per-frame total around `44-56 ms`
-    - end-to-end loop `7.486739 FPS`
+    - `241.812077 ms`
+    - `4.135443 FPS`
+  - A corrected vendor320 camera run on the real USB camera with default settings:
+    - auto-selected `/dev/v4l/by-id/... -> /dev/video20`
+    - auto-selected `MJPG`
+    - produced `objects=0` at frame 10 and frame 20 on the captured white-wall scene
+    - did not create any new AVI output unless explicitly requested
 
 - Remediation notes
-  - The original vendor 320x320 path was only performance-validated. Follow-up forensic work showed that it is still not trustworthy enough to remain the default visual demo path on the public stack.
-  - The repository now treats vendor 320x320 as the benchmark and low-latency path, while the default user-facing visual demo path is 640x640 dynamic INT8.
-  - Demo defaults now use sane auto camera selection, sane auto MJPG selection, and no AVI recording unless explicitly requested.
-  - The 2026-03-14 vendor320 forensic pass added stronger proof:
-    - board-installed vendor Python YOLO11 example on `python3-spacemit-ort 1.2.2` produced semantically reasonable detections on the canonical photo
-    - the repository tarball runtime path (`spacemit-ort.riscv64.2.0.1`) remained semantically poor on the same model/photo
-    - tarball vendor320 output hashes changed across warmup counts (`warmup=0`, `warmup=1`, long benchmark), which is not acceptable evidence for restoring it as a trusted visual default
-    - because of that, vendor320 stays benchmark/perf-only until the tarball/runtime-side blocker is resolved
+  - The decisive root-cause pass showed that vendor320 is runtime-version-sensitive on the public stack:
+    - public vendor example + `1.2.2` = semantically good
+    - public vendor example + `1.2.3` = semantically good
+    - public vendor example + `2.0.1` = semantically poor
+  - The repository now encodes that matrix explicitly instead of pretending one tarball is correct for every path:
+    - vendor320 visual path -> `rt123`
+    - vendor320 low-latency benchmark path -> `rt201`
+    - dynamic640 path -> `rt201`
+  - Demo defaults still use sane auto camera selection, sane auto MJPG selection, and no AVI recording unless explicitly requested.
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

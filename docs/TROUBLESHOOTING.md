@@ -15,7 +15,9 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 ## Vendor runtime not found
 
 - Run `./scripts/fetch_vendor_runtime.sh`.
-- Verify `third_party/vendor/spacemit-ort.riscv64.2.0.1/include/spacemit_ort_env.h` exists.
+- Verify both validated runtime trees exist:
+  - `third_party/vendor/spacemit-ort.riscv64.1.2.3/include/spacemit_ort_env.h`
+  - `third_party/vendor/spacemit-ort.riscv64.2.0.1/include/spacemit_ort_env.h`
 
 ## Cross build cannot find OpenCV
 
@@ -32,13 +34,22 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 
 ## Vendor 320x320 detections are missing or look suspicious
 
-- Use the official vendor model only when you explicitly want the low-latency benchmark path.
-- For the default visual demo path, keep the generated 640x640 dynamic INT8 model and `--conf 0.25`.
-- Do not assume that raising or lowering the threshold alone will fix vendor320 on the tarball runtime.
-- A focused forensic pass showed:
-  - the board-installed vendor Python reference path (`python3-spacemit-ort 1.2.2`) is semantically better on the canonical photo
-  - the tarball `spacemit-ort.riscv64.2.0.1` path used by this repository remains semantically weak for vendor320
-  - the tarball vendor320 output hash changes across warmup counts, so this is not just a bbox drawing issue
+- Use runtime `rt123` for trustworthy vendor320 image/camera inference:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_image_demo.sh /path/to/image.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320 0.25
+```
+
+- Use runtime `rt201` only when you explicitly want the low-latency benchmark path:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo11/yolov11n_320x320.q.onnx 320
+```
+
+- Do not assume that raising or lowering the threshold alone will fix vendor320 on the wrong runtime.
+- The validated public runtime split is:
+  - `1.2.2` / `1.2.3`: semantically good vendor320 references
+  - `2.0.1`: fast vendor320 benchmark path, but not the trusted visual choice
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 
@@ -49,10 +60,14 @@ BANANA_DEMO_DEBUG_DECODE=1
 - If you want to reproduce the tarball-vs-system distinction, compare:
 
 ```bash
-./scripts/bench_forward_only.sh models/vendor/yolo11/yolov11n_320x320.q.onnx 320
+BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo11/yolov11n_320x320.q.onnx 320
 ```
 
-against the official vendor YOLO11 example from `spacemit-demo` on the same board and photo.
+against:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_image_demo.sh /path/to/photo.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320 0.25
+```
 
 ## xquant is slow or pulls a huge dependency chain
 

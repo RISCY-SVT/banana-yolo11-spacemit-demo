@@ -12,6 +12,10 @@ Usage:
 Default benchmark path:
   - model: official vendor 320x320 INT8
   - input size: 320
+
+Environment overrides:
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
+  - auto/visual uses rt123 for vendor320 correctness and rt201 otherwise
 EOF
 }
 
@@ -26,10 +30,13 @@ if banana_demo_is_board_mode; then
   INPUT_SIZE="${2:-${INPUT_SIZE:-320}}"
   IMAGE_PATH="${3:-${IMAGE_PATH:-$(banana_demo_resolve_default_image "${REPO_DIR}")}}"
   LOG_FILE="${LOG_FILE:-${REPO_DIR}/logs/bench_full_${INPUT_SIZE}.log}"
+  RUNTIME_TAG="$(banana_demo_resolve_runtime_tag "${MODEL_PATH}" "visual")"
+  APP_BIN="$(banana_demo_binary_path "${REPO_DIR}" "${RUNTIME_TAG}")"
   mkdir -p "${REPO_DIR}/logs"
-  banana_demo_export_runtime_env "${REPO_DIR}"
+  banana_demo_export_runtime_env "${REPO_DIR}" "${RUNTIME_TAG}"
   banana_demo_unset_parallel_env
-  exec taskset -c 0,1,2,3 "${REPO_DIR}/bin/banana_yolo11_demo" \
+  echo "runtime_tag=${RUNTIME_TAG}"
+  exec taskset -c 0,1,2,3 "${APP_BIN}" \
     --model "${MODEL_PATH}" \
     --labels "${REPO_DIR}/assets/coco80.txt" \
     --input-size "${INPUT_SIZE}" \
@@ -57,4 +64,5 @@ MODEL_PATH="${1:-$(banana_demo_default_benchmark_model "${BOARD_DIR}")}"
 INPUT_SIZE="${2:-320}"
 IMAGE_PATH="${3:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
 REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"
-ssh "${TARGET}" "cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board LOG_FILE='${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log' ./scripts/bench_full_demo.sh '${MODEL_PATH}' '${INPUT_SIZE}' '${REMOTE_IMAGE_PATH}'"
+REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
+ssh "${TARGET}" "cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' LOG_FILE='${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log' ./scripts/bench_full_demo.sh '${REMOTE_MODEL_PATH}' '${INPUT_SIZE}' '${REMOTE_IMAGE_PATH}'"

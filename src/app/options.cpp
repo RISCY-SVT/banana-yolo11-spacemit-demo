@@ -216,9 +216,10 @@ std::string BuildUsage()
         << '\n'
         << "Notes:\n"
         << "  - Default visual demo scripts in this repository use the generated 640x640 dynamic INT8 model.\n"
-        << "  - The official vendor 320x320 INT8 model remains available as a low-latency benchmark path.\n"
-        << "  - On the public tarball 2.0.1 stack, vendor 320x320 is not restored as a trusted visual default.\n"
+        << "  - The official vendor 320x320 INT8 model is validated as a visual path with runtime rt123 and letterbox preprocessing.\n"
+        << "  - The public tarball 2.0.1 stack remains the low-latency vendor320 benchmark path and the validated dynamic640 path.\n"
         << "  - Custom Ultralytics/xquant models should normally use preprocess-mode=letterbox.\n"
+        << "  - Wrapper scripts auto-select the validated runtime by model and purpose; override with BANANA_DEMO_RUNTIME_TAG=rt123|rt201.\n"
         << "  - camera:auto prefers stable /dev/v4l/by-id or /dev/v4l/by-path capture nodes.\n"
         << '\n'
         << "Examples:\n"

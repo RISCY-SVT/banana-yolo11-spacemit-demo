@@ -2,8 +2,12 @@
 
 Standalone C++ demo repository for Banana Pi BPI-F3 / SpacemiT K1X using the vendor-tested ONNX Runtime stack:
 
-- vendor host runtime: `spacemit-ort.riscv64.2.0.1`
-- closed execution provider: `libspacemit_ep.so.2.0.1`
+- validated vendor runtimes:
+  - `spacemit-ort.riscv64.1.2.3` for trustworthy vendor320 visual inference
+  - `spacemit-ort.riscv64.2.0.1` for vendor320 low-latency benchmarking and dynamic640
+- closed execution providers:
+  - `libspacemit_ep.so.1.2.3`
+  - `libspacemit_ep.so.2.0.1`
 - model family: Ultralytics YOLO11n
 - primary optimized path: INT8 ONNX on SpaceMIT EP
 
@@ -13,7 +17,10 @@ The repository is designed to be usable by another engineer from scratch once th
 
 - Host build: Ubuntu 24.04 x86_64 cross-build container
 - Target board: Banana Pi BPI-F3 / SpacemiT K1X
-- Runtime: vendor `spacemit-ort.riscv64.2.0.1` + `libspacemit_ep.so.2.0.1`
+- Runtime matrix:
+  - vendor320 visual path: `rt123` = `spacemit-ort.riscv64.1.2.3`
+  - vendor320 perf path: `rt201` = `spacemit-ort.riscv64.2.0.1`
+  - dynamic640 path: `rt201` = `spacemit-ort.riscv64.2.0.1`
 - Benchmark model path:
   - official vendor YOLO11n INT8 320x320 ONNX
 - Default visual demo path:
@@ -91,7 +98,11 @@ Fetch and stage the vendor runtime:
 ./scripts/fetch_vendor_runtime.sh
 ```
 
-The version is pinned in `third_party_manifest/runtime.lock`.
+The validated runtime matrix is pinned in `third_party_manifest/runtime.lock`.
+The fetch helper stages both public tarballs required by this repository:
+
+- `rt123` -> `spacemit-ort.riscv64.1.2.3`
+- `rt201` -> `spacemit-ort.riscv64.2.0.1`
 
 ## Models
 
@@ -105,10 +116,13 @@ Outputs land under `models/vendor/yolo11/`.
 
 Notes:
 
-- The official vendor INT8 320x320 model remains the benchmark and low-latency path.
-- The default visual demo path in this repository is the generated 640x640 dynamic INT8 model because it is the more trustworthy user-facing path on the public stack.
-- A focused 2026-03-14 forensic pass showed that vendor320 remains semantically weak on the tarball `spacemit-ort.riscv64.2.0.1` stack even though it is fast there, while the board's installed vendor Python reference path behaves better on the same model.
-- In other words: vendor320 is benchmark-valid on tarball `2.0.1`, but it is not restored as the default trustworthy visual path in this repository.
+- The official vendor INT8 320x320 model is restored as a trustworthy visual path in this repository, but only on the validated `rt123` stack (`spacemit-ort.riscv64.1.2.3`) with letterbox preprocessing.
+- The same vendor320 model remains the low-latency benchmark path on `rt201` (`spacemit-ort.riscv64.2.0.1`), where it is fast but not trusted as the visual default.
+- The default visual demo path remains the generated 640x640 dynamic INT8 model, because it is the highest-quality user-facing path on the public stack.
+- A focused 2026-03-14 root-cause pass showed:
+  - the public vendor YOLO11 C++ example is semantically good on `1.2.2` and `1.2.3`
+  - the same public example becomes semantically poor on `2.0.1`
+  - our repository now mirrors that runtime split explicitly instead of pretending a single tarball version works for every model/path
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
 
@@ -168,8 +182,9 @@ The no-argument image demo uses the default visual path:
 - model: `models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx`
 - input size: `640`
 - confidence: `0.25`
+- runtime tag: `rt201`
 
-If you explicitly override the model to `models/vendor/yolo11/yolov11n_320x320.q.onnx`, the script prints a warning because that path remains benchmark-oriented on tarball `2.0.1`.
+If you explicitly override the model to `models/vendor/yolo11/yolov11n_320x320.q.onnx`, the script auto-selects runtime `rt123` and restores the validated vendor320 visual path. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the script warns because that stack remains perf-oriented rather than the trusted visual choice.
 
 The image helper accepts optional positional overrides:
 
@@ -197,6 +212,12 @@ Useful environment overrides:
 DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.25 ./scripts/run_camera_demo.sh /dev/video20
 ```
 
+Runtime override:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_camera_demo.sh auto /home/svt/banana-yolo11-spacemit-demo/models/vendor/yolo11/yolov11n_320x320.q.onnx 320
+```
+
 By default the camera helper does not record video. Recording is opt-in:
 
 ```bash
@@ -210,7 +231,7 @@ cd /home/svt/banana-yolo11-spacemit-demo
 BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh
 ```
 
-If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script prints a warning because the repository still treats that path as benchmark/perf-oriented rather than the default trustworthy visual path.
+If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. Only an explicit `BANANA_DEMO_RUNTIME_TAG=rt201` override keeps that path on the low-latency benchmark stack.
 
 ## Benchmark
 
@@ -227,6 +248,12 @@ Full pipeline:
 ```
 
 The forward-only benchmark compares the application against vendor `onnxruntime_perf_test`, because vendor CV tables exclude preprocess and postprocess.
+
+Benchmark runtime policy:
+
+- `bench_forward_only.sh` defaults to the low-latency `rt201` stack for vendor320 benchmarking
+- `bench_full_demo.sh` defaults to the validated visual stack (`rt123` for vendor320, `rt201` otherwise)
+- override either script with `BANANA_DEMO_RUNTIME_TAG=rt123|rt201` when you need a specific matrix entry
 
 ## CLI highlights
 
@@ -257,6 +284,10 @@ The binary supports:
   - `0.25`
 - Vendor low-latency benchmark model:
   - `models/vendor/yolo11/yolov11n_320x320.q.onnx`
+- Vendor320 trustworthy visual runtime:
+  - `rt123` = `spacemit-ort.riscv64.1.2.3`
+- Vendor320 low-latency benchmark runtime:
+  - `rt201` = `spacemit-ort.riscv64.2.0.1`
 - Board app root after deploy:
   - `/home/svt/banana-yolo11-spacemit-demo`
 - Required photo for reproducible image tests:
@@ -273,9 +304,10 @@ The binary supports:
     - `/run/user/<uid>/.mutter-Xwaylandauth.*` plus `DISPLAY=:0`
   - if GUI still fails, fall back to `--display 0 --headless 1`
 - Vendor 320x320 detections look wrong or disappear:
-  - treat the vendor 320x320 path as the benchmark and low-latency path on the public stack
-  - use the default 640x640 dynamic INT8 path for user-facing image and camera demos
-  - keep the vendor 320x320 path explicit, not implicit, when you need performance comparisons
+  - use `rt123` for trustworthy vendor320 image/camera inference:
+    - `BANANA_DEMO_RUNTIME_TAG=rt123`
+  - use `rt201` only when you explicitly want the low-latency benchmark stack
+  - keep the default 640x640 dynamic INT8 path for the best user-facing visual quality
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
 

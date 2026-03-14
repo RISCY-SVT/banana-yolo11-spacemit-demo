@@ -8,29 +8,51 @@ CACHE_DIR="${ROOT_DIR}/.deps/cache"
 
 mkdir -p "${OUT_DIR}" "${CACHE_DIR}"
 
-URL="$(awk -F= '$1=="url"{print $2}' "${LOCK_FILE}")"
-SHA256_EXPECTED="$(awk -F= '$1=="sha256"{print $2}' "${LOCK_FILE}")"
-NAME="$(awk -F= '$1=="name"{print $2}' "${LOCK_FILE}")"
-ARCHIVE="${CACHE_DIR}/${NAME}.tar.gz"
-EXTRACT_DIR="${OUT_DIR}/${NAME}"
+fetch_one_runtime() {
+  local name="$1"
+  local url="$2"
+  local sha256_expected="$3"
+  local archive="${CACHE_DIR}/${name}.tar.gz"
+  local extract_dir="${OUT_DIR}/${name}"
 
-if [[ -d "${EXTRACT_DIR}" && -f "${EXTRACT_DIR}/include/spacemit_ort_env.h" ]]; then
-  echo "Vendor runtime already prepared: ${EXTRACT_DIR}"
+  if [[ -d "${extract_dir}" && -f "${extract_dir}/include/spacemit_ort_env.h" ]]; then
+    echo "Vendor runtime already prepared: ${extract_dir}"
+    return 0
+  fi
+
+  if [[ ! -f "${archive}" ]]; then
+    if [[ -f "/data/SpacemiT/${name}.tar.gz" ]]; then
+      cp -f "/data/SpacemiT/${name}.tar.gz" "${archive}"
+    elif [[ -f "${ROOT_DIR}/.deps/cache/runtime_matrix/${name}.tar.gz" ]]; then
+      cp -f "${ROOT_DIR}/.deps/cache/runtime_matrix/${name}.tar.gz" "${archive}"
+    else
+      curl -L --fail --output "${archive}" "${url}"
+    fi
+  fi
+
+  echo "${sha256_expected}  ${archive}" | sha256sum -c
+
+  rm -rf "${extract_dir}"
+  tar -xf "${archive}" -C "${OUT_DIR}"
+  test -f "${extract_dir}/include/spacemit_ort_env.h"
+  echo "Prepared vendor runtime at ${extract_dir}"
+}
+
+mapfile -t RUNTIME_ENTRIES < <(awk -F= '$1=="runtime"{print $2}' "${LOCK_FILE}")
+
+if [[ "${#RUNTIME_ENTRIES[@]}" -eq 0 ]]; then
+  NAME="$(awk -F= '$1=="name"{print $2}' "${LOCK_FILE}")"
+  URL="$(awk -F= '$1=="url"{print $2}' "${LOCK_FILE}")"
+  SHA256_EXPECTED="$(awk -F= '$1=="sha256"{print $2}' "${LOCK_FILE}")"
+  fetch_one_runtime "${NAME}" "${URL}" "${SHA256_EXPECTED}"
   exit 0
 fi
 
-if [[ ! -f "${ARCHIVE}" ]]; then
-  if [[ -f "/data/SpacemiT/${NAME}.tar.gz" ]]; then
-    cp -f "/data/SpacemiT/${NAME}.tar.gz" "${ARCHIVE}"
-  else
-    curl -L --fail --output "${ARCHIVE}" "${URL}"
-  fi
-fi
-
-echo "${SHA256_EXPECTED}  ${ARCHIVE}" | sha256sum -c
-
-rm -rf "${EXTRACT_DIR}"
-tar -xf "${ARCHIVE}" -C "${OUT_DIR}"
-test -f "${EXTRACT_DIR}/include/spacemit_ort_env.h"
-echo "Prepared vendor runtime at ${EXTRACT_DIR}"
-
+for entry in "${RUNTIME_ENTRIES[@]}"; do
+  IFS='|' read -r runtime_tag name url sha256_expected <<<"${entry}"
+  [[ -n "${runtime_tag}" ]] || {
+    echo "Malformed runtime entry in ${LOCK_FILE}: ${entry}" >&2
+    exit 2
+  }
+  fetch_one_runtime "${name}" "${url}" "${sha256_expected}"
+done

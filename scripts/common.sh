@@ -52,6 +52,72 @@ banana_demo_is_vendor320_model() {
   [[ "$(basename "${model_path}")" == "yolov11n_320x320.q.onnx" ]]
 }
 
+banana_demo_runtime_dir() {
+  local repo_root="$1"
+  local runtime_tag="$2"
+  printf '%s\n' "${repo_root}/runtime/${runtime_tag}"
+}
+
+banana_demo_binary_path() {
+  local repo_root="$1"
+  local runtime_tag="$2"
+  local candidate="${repo_root}/bin/banana_yolo11_demo_${runtime_tag}"
+  if [[ -x "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+  printf '%s\n' "${repo_root}/bin/banana_yolo11_demo"
+}
+
+banana_demo_perf_test_path() {
+  local repo_root="$1"
+  local runtime_tag="$2"
+  printf '%s\n' "${repo_root}/runtime/${runtime_tag}/bin/onnxruntime_perf_test"
+}
+
+banana_demo_runtime_tag_from_override() {
+  local override="${BANANA_DEMO_RUNTIME_TAG:-auto}"
+  case "${override}" in
+    auto|"")
+      return 1
+      ;;
+    rt123|1.2.3)
+      printf 'rt123\n'
+      return 0
+      ;;
+    rt201|2.0.1)
+      printf 'rt201\n'
+      return 0
+      ;;
+    *)
+      echo "ERROR: unsupported BANANA_DEMO_RUNTIME_TAG=${override}; use auto|rt123|rt201" >&2
+      return 2
+      ;;
+  esac
+}
+
+banana_demo_resolve_runtime_tag() {
+  local model_path="$1"
+  local runtime_profile="${2:-visual}"
+  local override
+  if override="$(banana_demo_runtime_tag_from_override)"; then
+    printf '%s\n' "${override}"
+    return 0
+  fi
+
+  if [[ "${runtime_profile}" == "perf" ]]; then
+    printf 'rt201\n'
+    return 0
+  fi
+
+  if banana_demo_is_vendor320_model "${model_path}"; then
+    printf 'rt123\n'
+    return 0
+  fi
+
+  printf 'rt201\n'
+}
+
 banana_demo_join_colon_paths() {
   local out=""
   local item
@@ -69,8 +135,9 @@ banana_demo_join_colon_paths() {
 
 banana_demo_export_runtime_env() {
   local repo_root="$1"
+  local runtime_tag="$2"
   local libs
-  libs="$(banana_demo_join_colon_paths "${repo_root}/runtime/lib" "${repo_root}/opencv/lib")"
+  libs="$(banana_demo_join_colon_paths "$(banana_demo_runtime_dir "${repo_root}" "${runtime_tag}")/lib" "${repo_root}/opencv/lib")"
   if [[ -n "${libs}" ]]; then
     export LD_LIBRARY_PATH="${libs}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
   fi

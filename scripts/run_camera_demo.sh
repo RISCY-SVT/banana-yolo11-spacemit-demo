@@ -21,10 +21,11 @@ Default visual demo path:
   - confidence: 0.25
 
 Vendor 320x320 note:
-  - keep it as an explicit benchmark / forensic path only
-  - do not expect it to be the default trustworthy visual camera path on tarball 2.0.1
+  - visual runs auto-select the validated rt123 stack
+  - low-latency benchmarking can still force rt201 via BANANA_DEMO_RUNTIME_TAG=rt201
 
 Environment overrides:
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
   CAMERA_PIXFMT=auto|mjpg|yuyv
   CAMERA_WIDTH / CAMERA_HEIGHT / CAMERA_FPS
   DISPLAY_FLAG=0|1
@@ -53,6 +54,8 @@ if banana_demo_is_board_mode; then
   LOG_FILE="${LOG_FILE:-${REPO_DIR}/logs/camera_${INPUT_SIZE}.log}"
   QUIET="${QUIET:-0}"
   HEADLESS_FLAG="${HEADLESS_FLAG:-$((1-DISPLAY_FLAG))}"
+  RUNTIME_TAG="$(banana_demo_resolve_runtime_tag "${MODEL_PATH}" "visual")"
+  APP_BIN="$(banana_demo_binary_path "${REPO_DIR}" "${RUNTIME_TAG}")"
 
   if [[ -z "${CAMERA_PATH}" || "${CAMERA_PATH}" == "auto" ]]; then
     CAMERA_PATH="$(banana_demo_default_camera_path || true)"
@@ -66,17 +69,18 @@ if banana_demo_is_board_mode; then
   CAMERA_PIXFMT="${CAMERA_PIXFMT:-$(banana_demo_choose_camera_pixfmt "${CAMERA_REALPATH}" "${CAMERA_WIDTH}" "${CAMERA_HEIGHT}")}"
 
   mkdir -p "${REPO_DIR}/logs" "${REPO_DIR}/outputs"
-  banana_demo_export_runtime_env "${REPO_DIR}"
+  banana_demo_export_runtime_env "${REPO_DIR}" "${RUNTIME_TAG}"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
-  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
-    echo "WARN: vendor320 on tarball 2.0.1 is benchmark-valid but not a trusted visual camera default; prefer the default 640 dynamic path for user-facing demos." >&2
+  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${RUNTIME_TAG}" == "rt201" ]] && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
+    echo "WARN: vendor320 on rt201 remains perf-oriented; prefer the default visual auto-selection (rt123) unless you explicitly want the low-latency benchmark stack." >&2
   fi
+  echo "runtime_tag=${RUNTIME_TAG}" >&2
   echo "camera_selected=${CAMERA_PATH}" >&2
   echo "camera_resolved=${CAMERA_REALPATH}" >&2
   echo "camera_pixfmt_selected=${CAMERA_PIXFMT}" >&2
 
   cmd=(
-    "${REPO_DIR}/bin/banana_yolo11_demo"
+    "${APP_BIN}"
     --model "${MODEL_PATH}"
     --labels "${REPO_DIR}/assets/coco80.txt"
     --input-size "${INPUT_SIZE}"
@@ -118,8 +122,9 @@ CAMERA_WIDTH="${CAMERA_WIDTH:-1280}"
 CAMERA_HEIGHT="${CAMERA_HEIGHT:-720}"
 CAMERA_FPS="${CAMERA_FPS:-30}"
 CAMERA_PIXFMT="${CAMERA_PIXFMT:-}"
+REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
 
-remote_cmd="cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board QUIET=0 DISPLAY_FLAG='${DISPLAY_FLAG}' HEADLESS_FLAG='$((1-DISPLAY_FLAG))' CONFIDENCE='${CONFIDENCE}' LOG_FILE='${LOG_FILE_REMOTE}'"
+remote_cmd="cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board QUIET=0 DISPLAY_FLAG='${DISPLAY_FLAG}' HEADLESS_FLAG='$((1-DISPLAY_FLAG))' CONFIDENCE='${CONFIDENCE}' LOG_FILE='${LOG_FILE_REMOTE}' BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}'"
 remote_cmd="${remote_cmd} CAMERA_WIDTH='${CAMERA_WIDTH}' CAMERA_HEIGHT='${CAMERA_HEIGHT}' CAMERA_FPS='${CAMERA_FPS}'"
 if [[ -n "${CAMERA_PIXFMT}" ]]; then
   remote_cmd="${remote_cmd} CAMERA_PIXFMT='${CAMERA_PIXFMT}'"
@@ -127,5 +132,5 @@ fi
 if [[ -n "${SAVE_OUTPUT_REMOTE}" ]]; then
   remote_cmd="${remote_cmd} SAVE_OUTPUT='${SAVE_OUTPUT_REMOTE}'"
 fi
-remote_cmd="${remote_cmd} ./scripts/run_camera_demo.sh '${CAMERA_PATH}' '${MODEL_PATH}' '${INPUT_SIZE}' '${MAX_FRAMES}'"
+remote_cmd="${remote_cmd} ./scripts/run_camera_demo.sh '${CAMERA_PATH}' '${REMOTE_MODEL_PATH}' '${INPUT_SIZE}' '${MAX_FRAMES}'"
 ssh "${TARGET}" "${remote_cmd}"
