@@ -49,7 +49,13 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
 - Do not assume that raising or lowering the threshold alone will fix vendor320 on the wrong runtime.
 - The validated public runtime split is:
   - `1.2.2` / `1.2.3`: semantically good vendor320 references
+  - `1.2.4`: semantically good vendor320 package line, but still bad for dynamic640
   - `2.0.1`: fast vendor320 benchmark path, but not the trusted visual choice
+  - `2.0.2+beta1`: same bad vendor320 output family as `2.0.1`
+- If a run shows `alloc failed(...)`, do not use it as evidence for vendor320 correctness.
+- A clean-room retest with `/dev/tcm` idle and no `alloc failed(...)` still showed:
+  - `rt201` bad for vendor320
+  - `rt202b1` bad for vendor320
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 

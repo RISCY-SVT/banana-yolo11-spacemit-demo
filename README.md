@@ -123,6 +123,14 @@ Notes:
   - the public vendor YOLO11 C++ example is semantically good on `1.2.2` and `1.2.3`
   - the same public example becomes semantically poor on `2.0.1`
   - our repository now mirrors that runtime split explicitly instead of pretending a single tarball version works for every model/path
+- A follow-up clean-room runtime-line pass confirmed:
+  - `rt201` (`2.0.1`) remains semantically bad for vendor320 even when `/dev/tcm` is clean and no `alloc failed(...)` appears
+  - `rt202b1` (`2.0.2+beta1`) behaves like `rt201` for vendor320 and does not restore correct detections
+  - public `1.2.4` package line is semantically good for vendor320, but still breaks the dynamic640 path
+  - therefore the repository keeps the current policy:
+    - vendor320 visual -> `rt123`
+    - vendor320 perf -> `rt201`
+    - dynamic640 -> `rt201`
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
 
@@ -307,6 +315,9 @@ The binary supports:
   - use `rt123` for trustworthy vendor320 image/camera inference:
     - `BANANA_DEMO_RUNTIME_TAG=rt123`
   - use `rt201` only when you explicitly want the low-latency benchmark stack
+  - a clean-room recheck on 2026-03-14 showed that `rt201` remains wrong even without any `/dev/tcm` contention
+  - `rt202b1` does not fix vendor320 either
+  - public `1.2.4` is good for vendor320, but it still breaks dynamic640, so it is not the repo default
   - keep the default 640x640 dynamic INT8 path for the best user-facing visual quality
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app

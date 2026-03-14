@@ -56,6 +56,16 @@ This file is updated after board validation.
     - public vendor example + `1.2.2` = semantically good
     - public vendor example + `1.2.3` = semantically good
     - public vendor example + `2.0.1` = semantically poor
+  - A clean-room follow-up pass closed the remaining rt201 question:
+    - `/dev/tcm` was clean
+    - no `alloc failed(...)` appeared
+    - official vendor example on `rt201` still failed semantically
+    - repo app on `rt201` still failed semantically
+    - `rt202b1` (`2.0.2+beta1`) matched the same bad vendor320 output family as `rt201`
+    - public package line `1.2.4` was semantically good for vendor320 but still broke dynamic640 badly
+  - Raw output stability split is now explicit:
+    - `1.2.x` vendor320 line (`1.2.3`, `1.2.4`) is stable across warmup counts
+    - `2.0.x` public line (`2.0.1`, `2.0.2+beta1`) changes vendor320 raw output hashes across warmup counts even when input hash is fixed
   - The repository now encodes that matrix explicitly instead of pretending one tarball is correct for every path:
     - vendor320 visual path -> `rt123`
     - vendor320 low-latency benchmark path -> `rt201`
