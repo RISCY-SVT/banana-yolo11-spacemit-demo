@@ -47,6 +47,11 @@ banana_demo_default_benchmark_model() {
   printf '%s\n' "${repo_root}/models/vendor/yolo11/yolov11n_320x320.q.onnx"
 }
 
+banana_demo_is_vendor320_model() {
+  local model_path="${1:-}"
+  [[ "$(basename "${model_path}")" == "yolov11n_320x320.q.onnx" ]]
+}
+
 banana_demo_join_colon_paths() {
   local out=""
   local item

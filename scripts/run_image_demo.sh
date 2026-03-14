@@ -14,7 +14,10 @@ Default visual demo path:
   - input size: 640
   - confidence: 0.25
 
-For the low-latency vendor 320x320 benchmark path, override the model explicitly.
+Vendor 320x320 note:
+  - the tarball 2.0.1 path remains useful for low-latency benchmarking
+  - it is not restored as the default trustworthy visual demo path
+  - use the generated 640x640 path for the user-facing visual demo
 EOF
 }
 
@@ -38,6 +41,9 @@ if banana_demo_is_board_mode; then
   mkdir -p "$(dirname "${SAVE_OUTPUT}")" "$(dirname "${LOG_FILE}")"
   banana_demo_export_runtime_env "${REPO_DIR}"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
+  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
+    echo "WARN: vendor320 on tarball 2.0.1 is benchmark-valid but not a trusted visual default; prefer the default 640 dynamic path for user-facing demos." >&2
+  fi
 
   exec "${REPO_DIR}/bin/banana_yolo11_demo" \
     --model "${MODEL_PATH}" \

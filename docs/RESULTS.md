@@ -51,6 +51,11 @@ This file is updated after board validation.
   - The original vendor 320x320 path was only performance-validated. Follow-up forensic work showed that it is still not trustworthy enough to remain the default visual demo path on the public stack.
   - The repository now treats vendor 320x320 as the benchmark and low-latency path, while the default user-facing visual demo path is 640x640 dynamic INT8.
   - Demo defaults now use sane auto camera selection, sane auto MJPG selection, and no AVI recording unless explicitly requested.
+  - The 2026-03-14 vendor320 forensic pass added stronger proof:
+    - board-installed vendor Python YOLO11 example on `python3-spacemit-ort 1.2.2` produced semantically reasonable detections on the canonical photo
+    - the repository tarball runtime path (`spacemit-ort.riscv64.2.0.1`) remained semantically poor on the same model/photo
+    - tarball vendor320 output hashes changed across warmup counts (`warmup=0`, `warmup=1`, long benchmark), which is not acceptable evidence for restoring it as a trusted visual default
+    - because of that, vendor320 stays benchmark/perf-only until the tarball/runtime-side blocker is resolved
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

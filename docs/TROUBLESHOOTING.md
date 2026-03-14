@@ -34,12 +34,25 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 
 - Use the official vendor model only when you explicitly want the low-latency benchmark path.
 - For the default visual demo path, keep the generated 640x640 dynamic INT8 model and `--conf 0.25`.
+- Do not assume that raising or lowering the threshold alone will fix vendor320 on the tarball runtime.
+- A focused forensic pass showed:
+  - the board-installed vendor Python reference path (`python3-spacemit-ort 1.2.2`) is semantically better on the canonical photo
+  - the tarball `spacemit-ort.riscv64.2.0.1` path used by this repository remains semantically weak for vendor320
+  - the tarball vendor320 output hash changes across warmup counts, so this is not just a bbox drawing issue
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 
 ```bash
 BANANA_DEMO_DEBUG_DECODE=1
 ```
+
+- If you want to reproduce the tarball-vs-system distinction, compare:
+
+```bash
+./scripts/bench_forward_only.sh models/vendor/yolo11/yolov11n_320x320.q.onnx 320
+```
+
+against the official vendor YOLO11 example from `spacemit-demo` on the same board and photo.
 
 ## xquant is slow or pulls a huge dependency chain
 

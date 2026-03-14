@@ -107,6 +107,8 @@ Notes:
 
 - The official vendor INT8 320x320 model remains the benchmark and low-latency path.
 - The default visual demo path in this repository is the generated 640x640 dynamic INT8 model because it is the more trustworthy user-facing path on the public stack.
+- A focused 2026-03-14 forensic pass showed that vendor320 remains semantically weak on the tarball `spacemit-ort.riscv64.2.0.1` stack even though it is fast there, while the board's installed vendor Python reference path behaves better on the same model.
+- In other words: vendor320 is benchmark-valid on tarball `2.0.1`, but it is not restored as the default trustworthy visual path in this repository.
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
 
@@ -167,6 +169,8 @@ The no-argument image demo uses the default visual path:
 - input size: `640`
 - confidence: `0.25`
 
+If you explicitly override the model to `models/vendor/yolo11/yolov11n_320x320.q.onnx`, the script prints a warning because that path remains benchmark-oriented on tarball `2.0.1`.
+
 The image helper accepts optional positional overrides:
 
 ```bash
@@ -205,6 +209,8 @@ Board-local direct execution after deploy:
 cd /home/svt/banana-yolo11-spacemit-demo
 BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh
 ```
+
+If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script prints a warning because the repository still treats that path as benchmark/perf-oriented rather than the default trustworthy visual path.
 
 ## Benchmark
 

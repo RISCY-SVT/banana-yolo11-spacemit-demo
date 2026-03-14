@@ -20,6 +20,10 @@ Default visual demo path:
   - input size: 640
   - confidence: 0.25
 
+Vendor 320x320 note:
+  - keep it as an explicit benchmark / forensic path only
+  - do not expect it to be the default trustworthy visual camera path on tarball 2.0.1
+
 Environment overrides:
   CAMERA_PIXFMT=auto|mjpg|yuyv
   CAMERA_WIDTH / CAMERA_HEIGHT / CAMERA_FPS
@@ -64,6 +68,9 @@ if banana_demo_is_board_mode; then
   mkdir -p "${REPO_DIR}/logs" "${REPO_DIR}/outputs"
   banana_demo_export_runtime_env "${REPO_DIR}"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
+  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
+    echo "WARN: vendor320 on tarball 2.0.1 is benchmark-valid but not a trusted visual camera default; prefer the default 640 dynamic path for user-facing demos." >&2
+  fi
   echo "camera_selected=${CAMERA_PATH}" >&2
   echo "camera_resolved=${CAMERA_REALPATH}" >&2
   echo "camera_pixfmt_selected=${CAMERA_PIXFMT}" >&2
