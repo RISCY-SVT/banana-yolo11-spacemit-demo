@@ -56,6 +56,11 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
 - A clean-room retest with `/dev/tcm` idle and no `alloc failed(...)` still showed:
   - `rt201` bad for vendor320
   - `rt202b1` bad for vendor320
+- A later full-chain public compatibility pass also ruled out the remaining obvious rescue paths on modern 2.0.x:
+  - both public decode interpretations (`centerwh` and `xyxy`) were tested on the same raw output family
+  - graph optimization levels `0`, `1`, `2`, and `99` were tested on `rt201`, tarball `rt202b1`, and package `pkg202fix`
+  - none of those combinations restored a semantically good vendor320 result
+  - the public float `yolov11n_320x320.onnx` bundle failed EP reshape/compile on modern 2.0.x instead of becoming a valid fallback
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 

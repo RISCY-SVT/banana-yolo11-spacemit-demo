@@ -63,6 +63,11 @@ This file is updated after board validation.
     - repo app on `rt201` still failed semantically
     - `rt202b1` (`2.0.2+beta1`) matched the same bad vendor320 output family as `rt201`
     - public package line `1.2.4` was semantically good for vendor320 but still broke dynamic640 badly
+  - A chain-complete follow-up then closed the remaining public 2.0.x questions:
+    - official public example path was retested with the exact same `q.onnx` model bundle, exact same canonical photo input hash, and both public decode interpretations (`centerwh` and `xyxy`)
+    - `rt201`, tarball `rt202b1`, and package `pkg202fix` all stayed bad for vendor320 across graph optimization levels `0`, `1`, `2`, and `99`
+    - public float `yolov11n_320x320.onnx` was not a rescue path on 2.0.x either; the EP failed during reshape/compile instead
+    - no compatible public 2.0.x vendor320 chain was found
   - Raw output stability split is now explicit:
     - `1.2.x` vendor320 line (`1.2.3`, `1.2.4`) is stable across warmup counts
     - `2.0.x` public line (`2.0.1`, `2.0.2+beta1`) changes vendor320 raw output hashes across warmup counts even when input hash is fixed

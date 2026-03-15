@@ -127,6 +127,15 @@ Notes:
   - `rt201` (`2.0.1`) remains semantically bad for vendor320 even when `/dev/tcm` is clean and no `alloc failed(...)` appears
   - `rt202b1` (`2.0.2+beta1`) behaves like `rt201` for vendor320 and does not restore correct detections
   - public `1.2.4` package line is semantically good for vendor320, but still breaks the dynamic640 path
+  - a chain-complete public compatibility pass then tested the official public example path with:
+    - exact same `yolov11n_320x320.q.onnx` bundle
+    - exact same canonical photo input hash
+    - decode contracts `centerwh` and `xyxy`
+    - graph optimization levels `0`, `1`, `2`, and `99`
+  - result of that pass:
+    - no public `2.0.x` combination restored a good vendor320 image result
+    - `rt201`, tarball `rt202b1`, and package `pkg202fix` all remained bad on the same public `q.onnx` bundle
+    - the public float `yolov11n_320x320.onnx` bundle also failed on `2.0.x` with EP-side reshape/compile errors instead of becoming a viable fallback
   - therefore the repository keeps the current policy:
     - vendor320 visual -> `rt123`
     - vendor320 perf -> `rt201`
