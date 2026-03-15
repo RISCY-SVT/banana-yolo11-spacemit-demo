@@ -117,7 +117,12 @@ Outputs land under `models/vendor/yolo11/`.
 Notes:
 
 - The official vendor INT8 320x320 model is restored as a trustworthy visual path in this repository, but only on the validated `rt123` stack (`spacemit-ort.riscv64.1.2.3`) with letterbox preprocessing.
-- The same vendor320 model remains the low-latency benchmark path on `rt201` (`spacemit-ort.riscv64.2.0.1`), where it is fast but not trusted as the visual default.
+- The same vendor320 model remains the low-latency benchmark path on `rt201` (`spacemit-ort.riscv64.2.0.1`).
+- A focused EP/runtime pass on 2026-03-15 found a public `rt201` visual workaround for vendor320:
+  - `SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1`
+  - `SPACEMIT_EP_DISABLE_OP_NAME_FILTER=/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1`
+  - this restores semantically good vendor320 detections on the canonical photo and on blank-white sanity input
+  - it is much slower than `rt123`, so it is not the default visual policy
 - The default visual demo path remains the generated 640x640 dynamic INT8 model, because it is the highest-quality user-facing path on the public stack.
 - A focused 2026-03-14 root-cause pass showed:
   - the public vendor YOLO11 C++ example is semantically good on `1.2.2` and `1.2.3`
@@ -140,6 +145,10 @@ Notes:
     - vendor320 visual -> `rt123`
     - vendor320 perf -> `rt201`
     - dynamic640 -> `rt201`
+  - a later EP/runtime-localization pass refined that conclusion:
+    - `rt201` can be made visually correct only with the explicit public workaround above
+    - the workaround is far slower than `rt123`, so `rt123` remains the default vendor320 visual runtime
+    - `rt202b1` still remains bad even with the same workaround
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
 
@@ -201,7 +210,11 @@ The no-argument image demo uses the default visual path:
 - confidence: `0.25`
 - runtime tag: `rt201`
 
-If you explicitly override the model to `models/vendor/yolo11/yolov11n_320x320.q.onnx`, the script auto-selects runtime `rt123` and restores the validated vendor320 visual path. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the script warns because that stack remains perf-oriented rather than the trusted visual choice.
+If you explicitly override the model to `models/vendor/yolo11/yolov11n_320x320.q.onnx`, the script auto-selects runtime `rt123` and restores the validated vendor320 visual path. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the script now auto-enables the validated public workaround for visual correctness. Disable that workaround only when you intentionally want the raw low-latency perf path:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt201 BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0 ./scripts/run_image_demo.sh /path/to/image.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320
+```
 
 The image helper accepts optional positional overrides:
 
@@ -248,7 +261,7 @@ cd /home/svt/banana-yolo11-spacemit-demo
 BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh
 ```
 
-If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. Only an explicit `BANANA_DEMO_RUNTIME_TAG=rt201` override keeps that path on the low-latency benchmark stack.
+If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the visual helpers now auto-enable the validated public workaround. Disable it with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0` only when you intentionally want the raw low-latency perf stack.
 
 ## Benchmark
 
@@ -271,6 +284,7 @@ Benchmark runtime policy:
 - `bench_forward_only.sh` defaults to the low-latency `rt201` stack for vendor320 benchmarking
 - `bench_full_demo.sh` defaults to the validated visual stack (`rt123` for vendor320, `rt201` otherwise)
 - override either script with `BANANA_DEMO_RUNTIME_TAG=rt123|rt201` when you need a specific matrix entry
+- only the visual helpers auto-enable the slower vendor320 `rt201` workaround; forward-only benchmarking keeps the raw perf stack unless you export the workaround variables yourself
 
 ## CLI highlights
 
@@ -305,6 +319,9 @@ The binary supports:
   - `rt123` = `spacemit-ort.riscv64.1.2.3`
 - Vendor320 low-latency benchmark runtime:
   - `rt201` = `spacemit-ort.riscv64.2.0.1`
+- Vendor320 `rt201` visual workaround:
+  - auto-enabled only for visual helpers when you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`
+  - disable with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0`
 - Board app root after deploy:
   - `/home/svt/banana-yolo11-spacemit-demo`
 - Required photo for reproducible image tests:
@@ -323,9 +340,11 @@ The binary supports:
 - Vendor 320x320 detections look wrong or disappear:
   - use `rt123` for trustworthy vendor320 image/camera inference:
     - `BANANA_DEMO_RUNTIME_TAG=rt123`
-  - use `rt201` only when you explicitly want the low-latency benchmark stack
-  - a clean-room recheck on 2026-03-14 showed that `rt201` remains wrong even without any `/dev/tcm` contention
-  - `rt202b1` does not fix vendor320 either
+  - if you explicitly force `rt201` in the visual helpers, the scripts now auto-enable the validated public workaround
+  - disable that workaround only when you intentionally want the raw perf stack:
+    - `BANANA_DEMO_RUNTIME_TAG=rt201 BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0`
+  - a clean-room recheck on 2026-03-14 showed that raw `rt201` remains wrong even without any `/dev/tcm` contention
+  - `rt202b1` still does not fix vendor320 even with the same public workaround
   - public `1.2.4` is good for vendor320, but it still breaks dynamic640, so it is not the repo default
   - keep the default 640x640 dynamic INT8 path for the best user-facing visual quality
 - Vendor runtime accidentally replaced by system ORT:

@@ -143,6 +143,37 @@ banana_demo_export_runtime_env() {
   fi
 }
 
+banana_demo_apply_vendor320_rt201_visual_fix() {
+  local model_path="$1"
+  local runtime_tag="$2"
+  local runtime_profile="${3:-visual}"
+  local mode="${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}"
+  export BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED=0
+
+  banana_demo_is_vendor320_model "${model_path}" || return 0
+  [[ "${runtime_tag}" == "rt201" ]] || return 0
+
+  case "${mode}" in
+    0|off|false|disable|disabled)
+      return 0
+      ;;
+    auto)
+      [[ "${runtime_profile}" == "visual" ]] || return 0
+      ;;
+    1|on|true|enable|enabled)
+      ;;
+    *)
+      echo "ERROR: unsupported BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=${mode}; use auto|0|1" >&2
+      return 2
+      ;;
+  esac
+
+  export SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1
+  export SPACEMIT_EP_DISABLE_OP_NAME_FILTER="/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1"
+  export BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED=1
+  echo "INFO: enabling vendor320 rt201 visual workaround (disable float16 epilogue; keep /model.23 tail Slice/Add/Sub ops on CPU)." >&2
+}
+
 banana_demo_prepare_display_env() {
   local display_flag="${1:-0}"
   [[ "${display_flag}" == "1" ]] || return 0

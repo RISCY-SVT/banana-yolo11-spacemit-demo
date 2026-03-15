@@ -52,6 +52,17 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
   - `1.2.4`: semantically good vendor320 package line, but still bad for dynamic640
   - `2.0.1`: fast vendor320 benchmark path, but not the trusted visual choice
   - `2.0.2+beta1`: same bad vendor320 output family as `2.0.1`
+- A later EP/runtime pass found one public `rt201` visual workaround:
+  - `SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1`
+  - `SPACEMIT_EP_DISABLE_OP_NAME_FILTER=/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1`
+  - the visual helper scripts auto-apply that workaround when you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`
+  - disable it only when you intentionally want the raw perf path:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt201 BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0 ./scripts/run_image_demo.sh /path/to/image.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320 0.25
+```
+
+  - this workaround is much slower than `rt123`, so `rt123` remains the default visual runtime
 - If a run shows `alloc failed(...)`, do not use it as evidence for vendor320 correctness.
 - A clean-room retest with `/dev/tcm` idle and no `alloc failed(...)` still showed:
   - `rt201` bad for vendor320
@@ -61,6 +72,11 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
   - graph optimization levels `0`, `1`, `2`, and `99` were tested on `rt201`, tarball `rt202b1`, and package `pkg202fix`
   - none of those combinations restored a semantically good vendor320 result
   - the public float `yolov11n_320x320.onnx` bundle failed EP reshape/compile on modern 2.0.x instead of becoming a valid fallback
+  - a final EP/runtime-localization pass then narrowed the modern 2.0.x behavior further:
+    - `rt201` optimized models from `o0/o1/o2/o99` all stayed semantically good when replayed on stable `rt123` CPU
+    - so the public 2.0.x host graph rewrite is not the vendor320 corruption point
+    - the remaining corruption is in EP execution, specifically the `/model.23` tail on public `rt201`
+    - `rt202b1` still remained bad even with the same public workaround that repaired `rt201`
 - Use `--conf 0.01` only for debugging or score-distribution inspection.
 - If you need to inspect decode behavior, set:
 

@@ -22,10 +22,12 @@ Default visual demo path:
 
 Vendor 320x320 note:
   - visual runs auto-select the validated rt123 stack
-  - low-latency benchmarking can still force rt201 via BANANA_DEMO_RUNTIME_TAG=rt201
+  - if you explicitly force rt201 in visual mode, the script auto-enables the validated public workaround
+  - low-latency benchmarking can still force raw rt201 behavior via BANANA_DEMO_RUNTIME_TAG=rt201 and BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0
 
 Environment overrides:
   BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
+  BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
   CAMERA_PIXFMT=auto|mjpg|yuyv
   CAMERA_WIDTH / CAMERA_HEIGHT / CAMERA_FPS
   DISPLAY_FLAG=0|1
@@ -70,9 +72,10 @@ if banana_demo_is_board_mode; then
 
   mkdir -p "${REPO_DIR}/logs" "${REPO_DIR}/outputs"
   banana_demo_export_runtime_env "${REPO_DIR}" "${RUNTIME_TAG}"
+  banana_demo_apply_vendor320_rt201_visual_fix "${MODEL_PATH}" "${RUNTIME_TAG}" "visual"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
-  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${RUNTIME_TAG}" == "rt201" ]] && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
-    echo "WARN: vendor320 on rt201 remains perf-oriented; prefer the default visual auto-selection (rt123) unless you explicitly want the low-latency benchmark stack." >&2
+  if banana_demo_is_vendor320_model "${MODEL_PATH}" && [[ "${RUNTIME_TAG}" == "rt201" ]] && [[ "${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED:-0}" != "1" ]] && [[ "${BANANA_DEMO_SUPPRESS_VENDOR320_WARN:-0}" != "1" ]]; then
+    echo "WARN: vendor320 on rt201 is using the raw perf-oriented path; set BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=1 or prefer the default rt123 visual path." >&2
   fi
   echo "runtime_tag=${RUNTIME_TAG}" >&2
   echo "camera_selected=${CAMERA_PATH}" >&2
@@ -124,7 +127,7 @@ CAMERA_FPS="${CAMERA_FPS:-30}"
 CAMERA_PIXFMT="${CAMERA_PIXFMT:-}"
 REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
 
-remote_cmd="cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board QUIET=0 DISPLAY_FLAG='${DISPLAY_FLAG}' HEADLESS_FLAG='$((1-DISPLAY_FLAG))' CONFIDENCE='${CONFIDENCE}' LOG_FILE='${LOG_FILE_REMOTE}' BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}'"
+remote_cmd="cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board QUIET=0 DISPLAY_FLAG='${DISPLAY_FLAG}' HEADLESS_FLAG='$((1-DISPLAY_FLAG))' CONFIDENCE='${CONFIDENCE}' LOG_FILE='${LOG_FILE_REMOTE}' BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX='${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}'"
 remote_cmd="${remote_cmd} CAMERA_WIDTH='${CAMERA_WIDTH}' CAMERA_HEIGHT='${CAMERA_HEIGHT}' CAMERA_FPS='${CAMERA_FPS}'"
 if [[ -n "${CAMERA_PIXFMT}" ]]; then
   remote_cmd="${remote_cmd} CAMERA_PIXFMT='${CAMERA_PIXFMT}'"
