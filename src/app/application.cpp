@@ -28,6 +28,29 @@ bool IsDisplayPossible(const AppOptions& options)
     return (display && *display) || (wayland && *wayland);
 }
 
+std::string BoolWord(bool value)
+{
+    return value ? "1" : "0";
+}
+
+std::string EnvOrUnset(const char* name)
+{
+    const char* value = std::getenv(name);
+    return value && *value ? value : "<unset>";
+}
+
+std::string FormatDisplaySummary(const AppOptions& options, bool display_enabled)
+{
+    std::ostringstream oss;
+    oss << "display_requested=" << options.display
+        << " headless_requested=" << options.headless
+        << " display_enabled=" << BoolWord(display_enabled)
+        << " DISPLAY=" << EnvOrUnset("DISPLAY")
+        << " WAYLAND_DISPLAY=" << EnvOrUnset("WAYLAND_DISPLAY")
+        << " XDG_SESSION_TYPE=" << EnvOrUnset("XDG_SESSION_TYPE");
+    return oss.str();
+}
+
 std::string FormatFrameMetrics(const FrameMetrics& metrics)
 {
     std::ostringstream oss;
@@ -140,6 +163,7 @@ int Application::RunImageMode()
     }
 
     Renderer renderer;
+    bool display_enabled = IsDisplayPossible(options_);
     InferenceResult result = detector.ProcessImage(frame, false);
     const auto render_begin = std::chrono::steady_clock::now();
     result.annotated = renderer.Draw(frame, result.detections, detector.Labels(), result.metrics);
@@ -162,7 +186,9 @@ int Application::RunImageMode()
         logger.Info("saved_output=" + output_path);
     }
 
-    if (IsDisplayPossible(options_))
+    logger.Info(FormatDisplaySummary(options_, display_enabled));
+
+    if (display_enabled)
     {
         if (!renderer.TryShow("banana_yolo11_demo", result.annotated, error))
         {
@@ -226,6 +252,17 @@ int Application::RunCameraMode()
     logger.Info("camera_fps=" + std::to_string(source.Fps()));
     logger.Info("camera_pixfmt=" + source.PixelFormat());
     logger.Info(detector.ProviderSummary());
+    bool display_enabled = IsDisplayPossible(options_);
+    logger.Info(FormatDisplaySummary(options_, display_enabled));
+    if (display_enabled)
+        logger.Info("camera display mode active; press ESC/q in the preview window to exit");
+    else if (options_.display && !options_.headless)
+        logger.Warn("display requested but GUI session variables are missing; switching to headless progress logging");
+    else
+        logger.Info("camera running in headless mode; periodic progress logs enabled and Ctrl-C stops the loop");
+    logger.Info("camera max_frames=" + std::to_string(options_.max_frames) +
+                " save_output=" + (options_.save_output.empty() ? std::string("<disabled>") : options_.save_output));
+    logger.Info("camera warmup note: the first inference can take noticeably longer while the runtime prepares the graph");
 
     cv::VideoWriter writer;
     if (!options_.save_output.empty())
@@ -239,9 +276,11 @@ int Application::RunCameraMode()
         }
     }
 
-    const bool display_enabled = IsDisplayPossible(options_);
     int frame_index = 0;
     auto loop_start = std::chrono::steady_clock::now();
+    auto last_progress_log = loop_start;
+    bool first_frame_notice_emitted = false;
+    bool display_ready_logged = false;
     while (true)
     {
         cv::Mat frame;
@@ -249,6 +288,12 @@ int Application::RunCameraMode()
         {
             logger.Warn("camera read failed or stream ended");
             break;
+        }
+
+        if (!first_frame_notice_emitted)
+        {
+            logger.Info("first frame captured; starting inference now");
+            first_frame_notice_emitted = true;
         }
 
         InferenceResult result = detector.ProcessImage(frame, false);
@@ -266,9 +311,15 @@ int Application::RunCameraMode()
             if (!renderer.TryShow("banana_yolo11_demo_camera", result.annotated, error))
             {
                 logger.Warn("display failed, disabling display: " + error);
+                display_enabled = false;
             }
             else
             {
+                if (!display_ready_logged)
+                {
+                    logger.Info("display active, live preview should now be visible; press ESC/q to exit");
+                    display_ready_logged = true;
+                }
                 const int key = cv::waitKey(1);
                 if (key == 27 || key == 'q' || key == 'Q')
                     break;
@@ -276,8 +327,14 @@ int Application::RunCameraMode()
         }
 
         ++frame_index;
-        if (frame_index % 10 == 0)
+        const auto now = std::chrono::steady_clock::now();
+        const bool timed_progress = !display_enabled &&
+                                    std::chrono::duration_cast<std::chrono::seconds>(now - last_progress_log).count() >= 5;
+        if (frame_index == 1 || frame_index % 10 == 0 || timed_progress)
+        {
             logger.Info("frame=" + std::to_string(frame_index) + " " + FormatFrameMetrics(result.metrics));
+            last_progress_log = now;
+        }
 
         if (options_.max_frames > 0 && frame_index >= options_.max_frames)
             break;

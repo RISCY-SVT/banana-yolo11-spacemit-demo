@@ -222,6 +222,12 @@ The image helper accepts optional positional overrides:
 ./scripts/run_image_demo.sh <image> <model> <input_size> <conf>
 ```
 
+Board-local image runs now default to `DISPLAY_FLAG=auto`:
+
+- if a GUI session is already exported, the helper keeps that display path
+- if the board shell is a plain tty but Wayland/X11 sockets are present, the helper attempts to restore the local GUI env automatically
+- if neither is available, the helper stays headless and the application logs that fallback explicitly
+
 Board-local direct execution after deploy:
 
 ```bash
@@ -235,6 +241,20 @@ BANANA_DEMO_EXEC_MODE=board ./scripts/run_image_demo.sh
 ./scripts/detect_camera_formats.sh
 ./scripts/run_camera_demo.sh
 ```
+
+Board-local camera default behavior:
+
+- `DISPLAY_FLAG=auto`
+- `HEADLESS_FLAG=auto`
+- `MAX_FRAMES=0`
+- live preview stays open until `q` / `ESC` or `Ctrl-C`
+- if GUI env/backend is not usable, the helper prints an explicit headless fallback message and the app emits periodic progress logs instead of appearing stuck
+
+Host-wrapper camera default behavior:
+
+- `DISPLAY_FLAG=0`
+- `HEADLESS_FLAG=auto`
+- `MAX_FRAMES=200`
 
 Useful environment overrides:
 
@@ -258,7 +278,7 @@ Board-local direct execution after deploy:
 
 ```bash
 cd /home/svt/banana-yolo11-spacemit-demo
-BANANA_DEMO_EXEC_MODE=board DISPLAY_FLAG=1 ./scripts/run_camera_demo.sh
+BANANA_DEMO_EXEC_MODE=board ./scripts/run_camera_demo.sh
 ```
 
 If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the visual helpers now auto-enable the validated public workaround. Disable it with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0` only when you intentionally want the raw low-latency perf stack.
@@ -321,7 +341,12 @@ The binary supports:
   - `rt201` = `spacemit-ort.riscv64.2.0.1`
 - Vendor320 `rt201` visual workaround:
   - auto-enabled only for visual helpers when you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`
+  - guarded by the validated official vendor320 model SHA256 allowlist
   - disable with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0`
+- Board-local camera defaults:
+  - `DISPLAY_FLAG=auto`, `HEADLESS_FLAG=auto`, `MAX_FRAMES=0`
+- Host-wrapper camera defaults:
+  - `DISPLAY_FLAG=0`, `HEADLESS_FLAG=auto`, `MAX_FRAMES=200`
 - Board app root after deploy:
   - `/home/svt/banana-yolo11-spacemit-demo`
 - Required photo for reproducible image tests:
@@ -332,11 +357,12 @@ The binary supports:
 ## Troubleshooting
 
 - Display over SSH:
-  - if a desktop session is active, the run scripts auto-detect Wayland and Xwayland session hints:
+  - board-local visual helpers now use `DISPLAY_FLAG=auto` and try to recover a usable display from Wayland/X11 socket hints:
     - `XDG_RUNTIME_DIR=/run/user/<uid>`
     - `WAYLAND_DISPLAY=wayland-0` when present
     - `/run/user/<uid>/.mutter-Xwaylandauth.*` plus `DISPLAY=:0`
-  - if GUI still fails, fall back to `--display 0 --headless 1`
+  - if GUI still fails, the app now prints an explicit fallback warning and continues headless with periodic frame progress
+  - force headless manually with `DISPLAY_FLAG=0`
 - Vendor 320x320 detections look wrong or disappear:
   - use `rt123` for trustworthy vendor320 image/camera inference:
     - `BANANA_DEMO_RUNTIME_TAG=rt123`
@@ -349,6 +375,8 @@ The binary supports:
   - keep the default 640x640 dynamic INT8 path for the best user-facing visual quality
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
+- Reproducibility helper:
+  - `./scripts/vendor320_runtime_matrix.sh` saves a compact `rt123` / `rt201 raw` / `rt201 fixed` comparison table plus annotated outputs
 
 ## Licensing and vendor binaries
 

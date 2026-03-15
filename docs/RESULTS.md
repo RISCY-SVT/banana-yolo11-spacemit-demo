@@ -16,10 +16,19 @@ This file is updated after board validation.
 - Camera demo
   - Default camera auto-selection resolves the USB camera through `/dev/v4l/by-id/... -> /dev/video20`.
   - The default camera auto mode chooses MJPG for `1280x720` because it offers `60 FPS` on the connected USB camera, versus `7.5 FPS` for YUYV.
+  - Board-local `run_camera_demo.sh` now defaults to `DISPLAY_FLAG=auto`, `HEADLESS_FLAG=auto`, and `MAX_FRAMES=0`.
+  - In a tty shell with no exported GUI vars, the helper detects local Wayland/X11 sockets and attempts live display automatically.
+  - If GUI is still unavailable, the helper prints an explicit fallback message and the app emits early plus periodic progress logs instead of appearing stuck.
   - Headless live inference is stable.
   - Default camera runs no longer create AVI output unless explicitly requested.
-  - Display mode requires a valid desktop session plus Wayland/Xwayland session variables.
-  - A display probe reached the application branch `display active, press any key to exit`.
+  - A board-local camera run from repo root reached:
+    - `display_resolved=1`
+    - `display_reason=gui-socket`
+    - `display active, live preview should now be visible; press ESC/q to exit`
+  - A forced headless run reached:
+    - `display_resolved=0`
+    - `camera running in headless mode; periodic progress logs enabled`
+    - early frame logs such as `frame=1 ...` without waiting for 10 frames
 
 - Forward-only benchmark
   - Vendor320 perf stack (`rt201`) `onnxruntime_perf_test`:
@@ -87,6 +96,10 @@ This file is updated after board validation.
     - dynamic640 path -> `rt201`
     - forced `rt201` visual runs now auto-apply the validated public workaround, but defaults still prefer `rt123` because the workaround is much slower
   - Demo defaults still use sane auto camera selection, sane auto MJPG selection, and no AVI recording unless explicitly requested.
+  - The validated `vendor320 rt201` visual workaround is now guarded by the official vendor320 model SHA256, so it is not silently applied to arbitrary `320`-named models.
+  - A compact reproducibility helper now exists:
+    - `scripts/vendor320_runtime_matrix.sh`
+    - it saves `rt123`, `rt201 raw`, and `rt201 fixed` image outputs plus a compact matrix table
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

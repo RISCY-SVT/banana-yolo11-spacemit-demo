@@ -52,6 +52,44 @@ banana_demo_is_vendor320_model() {
   [[ "$(basename "${model_path}")" == "yolov11n_320x320.q.onnx" ]]
 }
 
+banana_demo_sha256_file() {
+  local file_path="${1:-}"
+  [[ -f "${file_path}" ]] || return 1
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${file_path}" | awk '{print $1}'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${file_path}" | awk '{print $1}'
+    return 0
+  fi
+  return 1
+}
+
+banana_demo_is_validated_vendor320_model_hash() {
+  local model_hash="${1:-}"
+  case "${model_hash}" in
+    558011431ba1cd26269af3694abc2ee2fc2d467d7fe043e10df78ed7449d9edc)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+banana_demo_vendor320_model_hash() {
+  local model_path="${1:-}"
+  banana_demo_is_vendor320_model "${model_path}" || return 1
+  banana_demo_sha256_file "${model_path}"
+}
+
+banana_demo_is_validated_vendor320_model() {
+  local model_path="${1:-}"
+  local model_hash
+  model_hash="$(banana_demo_vendor320_model_hash "${model_path}" 2>/dev/null || true)"
+  [[ -n "${model_hash}" ]] || return 1
+  banana_demo_is_validated_vendor320_model_hash "${model_hash}"
+}
+
 banana_demo_runtime_dir() {
   local repo_root="$1"
   local runtime_tag="$2"
@@ -110,7 +148,7 @@ banana_demo_resolve_runtime_tag() {
     return 0
   fi
 
-  if banana_demo_is_vendor320_model "${model_path}"; then
+  if banana_demo_is_validated_vendor320_model "${model_path}"; then
     printf 'rt123\n'
     return 0
   fi
@@ -148,10 +186,12 @@ banana_demo_apply_vendor320_rt201_visual_fix() {
   local runtime_tag="$2"
   local runtime_profile="${3:-visual}"
   local mode="${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}"
+  local model_hash=""
   export BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED=0
 
   banana_demo_is_vendor320_model "${model_path}" || return 0
   [[ "${runtime_tag}" == "rt201" ]] || return 0
+  model_hash="$(banana_demo_vendor320_model_hash "${model_path}" 2>/dev/null || true)"
 
   case "${mode}" in
     0|off|false|disable|disabled)
@@ -168,10 +208,19 @@ banana_demo_apply_vendor320_rt201_visual_fix() {
       ;;
   esac
 
+  if ! banana_demo_is_validated_vendor320_model_hash "${model_hash}"; then
+    if [[ "${mode}" == "auto" ]]; then
+      echo "WARN: skipping vendor320 rt201 visual workaround because model identity is not the validated official bundle (sha256=${model_hash:-unknown})." >&2
+      return 0
+    fi
+    echo "ERROR: refusing to apply vendor320 rt201 visual workaround to an unvalidated model (sha256=${model_hash:-unknown})." >&2
+    return 2
+  fi
+
   export SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1
   export SPACEMIT_EP_DISABLE_OP_NAME_FILTER="/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1"
   export BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED=1
-  echo "INFO: enabling vendor320 rt201 visual workaround (disable float16 epilogue; keep /model.23 tail Slice/Add/Sub ops on CPU)." >&2
+  echo "INFO: enabling vendor320 rt201 visual workaround for validated official model (sha256=${model_hash}) (disable float16 epilogue; keep /model.23 tail Slice/Add/Sub ops on CPU)." >&2
 }
 
 banana_demo_prepare_display_env() {
@@ -190,6 +239,60 @@ banana_demo_prepare_display_env() {
       break
     done
   fi
+}
+
+banana_demo_gui_env_available() {
+  [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]
+}
+
+banana_demo_gui_socket_available() {
+  local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  [[ -S "${runtime_dir}/wayland-0" || -S /tmp/.X11-unix/X0 ]]
+}
+
+banana_demo_resolve_display_flag() {
+  local requested="${1:-auto}"
+  case "${requested}" in
+    ""|auto)
+      if banana_demo_gui_env_available; then
+        printf '1\tgui-env\n'
+      elif banana_demo_gui_socket_available; then
+        printf '1\tgui-socket\n'
+      else
+        printf '0\tno-gui-env-or-socket\n'
+      fi
+      ;;
+    1|on|true|enable|enabled)
+      printf '1\tuser-forced-on\n'
+      ;;
+    0|off|false|disable|disabled)
+      printf '0\tuser-forced-off\n'
+      ;;
+    *)
+      echo "ERROR: unsupported DISPLAY_FLAG=${requested}; use auto|0|1" >&2
+      return 2
+      ;;
+  esac
+}
+
+banana_demo_resolve_headless_flag() {
+  local requested="${1:-auto}"
+  local display_flag="${2:-0}"
+  case "${requested}" in
+    ""|auto)
+      printf '%s\tauto-from-display\n' "$((display_flag == 1 ? 0 : 1))"
+      ;;
+    1|on|true|enable|enabled)
+      printf '1\tuser-forced-on\n'
+      ;;
+    0|off|false|disable|disabled)
+      printf '0\tuser-forced-off\n'
+      ;;
+    *)
+      echo "ERROR: unsupported HEADLESS_FLAG=${requested}; use auto|0|1" >&2
+      return 2
+      ;;
+  esac
 }
 
 banana_demo_parse_video_index() {

@@ -3,8 +3,12 @@
 ## Display does not open
 
 - Ensure GTK/OpenCV runtime is available on the board.
-- If running over SSH without an active desktop session, use `--display 0 --headless 1`.
-- If a desktop session is active, try `DISPLAY=:0`.
+- The board-local image/camera helpers now default to `DISPLAY_FLAG=auto`.
+  - if `DISPLAY` / `WAYLAND_DISPLAY` is already exported, they keep it
+  - if the shell is a tty but Wayland/X11 sockets are present, they try to reconstruct the local GUI env automatically
+  - if that still fails, the app prints an explicit fallback warning and continues headless with periodic progress logs
+- If running over SSH without an active desktop session, force headless with `DISPLAY_FLAG=0`.
+- If a desktop session is active, you can still force the path explicitly with `DISPLAY_FLAG=1`.
 - On GNOME Wayland, also export the Xwayland auth file, for example:
 
 ```bash
@@ -31,6 +35,18 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 - Run `./scripts/detect_camera_formats.sh` first and use the reported resolved capture node if needed.
 - Try `--camera-pixfmt mjpg` or `--camera-pixfmt yuyv`.
 - Prefer MJPG if the camera supports it at higher FPS.
+- Board-local `./scripts/run_camera_demo.sh` now defaults to:
+  - `DISPLAY_FLAG=auto`
+  - `HEADLESS_FLAG=auto`
+  - `MAX_FRAMES=0`
+- Host-wrapper `./scripts/run_camera_demo.sh` keeps:
+  - `DISPLAY_FLAG=0`
+  - `HEADLESS_FLAG=auto`
+  - `MAX_FRAMES=200`
+- If the helper appears idle, check the early progress lines:
+  - `first frame captured; starting inference now`
+  - `frame=...`
+  Those are now emitted before waiting for 10 frames, so a slow first inference no longer looks like a hang.
 
 ## Vendor 320x320 detections are missing or look suspicious
 
@@ -56,6 +72,7 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
   - `SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1`
   - `SPACEMIT_EP_DISABLE_OP_NAME_FILTER=/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1`
   - the visual helper scripts auto-apply that workaround when you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`
+  - the helper now refuses to auto-apply it to an unvalidated 320 model bundle; it is guarded by the official vendor320 model SHA256
   - disable it only when you intentionally want the raw perf path:
 
 ```bash
@@ -95,6 +112,20 @@ against:
 ```bash
 BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_image_demo.sh /path/to/photo.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320 0.25
 ```
+
+## Compact runtime regression check
+
+- Run:
+
+```bash
+./scripts/vendor320_runtime_matrix.sh
+```
+
+- The helper saves:
+  - `rt123`
+  - `rt201 raw`
+  - `rt201 fixed`
+  together with annotated outputs and a compact CSV/Markdown summary.
 
 ## xquant is slow or pulls a huge dependency chain
 
