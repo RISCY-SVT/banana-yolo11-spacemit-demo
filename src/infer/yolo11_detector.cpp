@@ -1,3 +1,8 @@
+/**
+ * @file yolo11_detector.cpp
+ * @brief ONNX Runtime backed YOLO11 preprocessing, execution, and decode logic.
+ */
+
 #include "banana_demo/infer/detector.h"
 
 #include "banana_demo/render/renderer.h"
@@ -23,6 +28,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Collect provider options that the public vendor runtime reads from the environment. */
 std::unordered_map<std::string, std::string> BuildProviderOptionsFromEnv()
 {
     static const char* kKeys[] = {
@@ -44,18 +50,21 @@ std::unordered_map<std::string, std::string> BuildProviderOptionsFromEnv()
     return provider_options;
 }
 
+/** @brief Enable verbose preprocess/decode diagnostics for forensic runs. */
 bool DebugDecodeEnabled()
 {
     const char* value = std::getenv("BANANA_DEMO_DEBUG_DECODE");
     return value && *value && std::string(value) != "0";
 }
 
+/** @brief Hash a raw float output tensor for reproducibility reports. */
 std::string HashOutputTensor(const std::vector<float>& data)
 {
     const auto* ptr = reinterpret_cast<const uint8_t*>(data.data());
     return Sha256Hex(ptr, data.size() * sizeof(float));
 }
 
+/** @brief Hash decoded detections after converting them to a stable byte layout. */
 std::string HashDetections(const std::vector<Detection>& detections)
 {
     std::vector<uint8_t> bytes;
@@ -73,6 +82,7 @@ std::string HashDetections(const std::vector<Detection>& detections)
     return Sha256Hex(bytes);
 }
 
+/** @brief Compute intersection-over-union between two boxes. */
 float Iou(const Detection& a, const Detection& b)
 {
     const float x1 = std::max(a.x1, b.x1);
@@ -88,6 +98,7 @@ float Iou(const Detection& a, const Detection& b)
     return uni <= 0.f ? 0.f : inter / uni;
 }
 
+/** @brief Perform per-class greedy NMS. */
 std::vector<Detection> NmsClasswise(const std::vector<Detection>& detections, float iou_threshold)
 {
     std::vector<Detection> out;
@@ -175,6 +186,7 @@ void Yolo11Detector::ResolveInputShape()
 
 void Yolo11Detector::BuildSession()
 {
+    // Keep the runtime configuration deterministic so board-side repros stay comparable.
     session_options_.SetIntraOpNumThreads(options_.threads);
     session_options_.SetInterOpNumThreads(1);
     session_options_.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
@@ -233,12 +245,14 @@ bool Yolo11Detector::PreprocessToNchw(const cv::Mat& bgr, std::vector<float>& nc
     cv::Mat preprocessed;
     if (info.mode == PreprocessMode::kResize)
     {
+        // Resize mode is mainly a debugging path kept for vendor contract investigations.
         cv::Mat resized;
         cv::resize(bgr, resized, cv::Size(input_width_, input_height_), 0, 0, cv::INTER_LINEAR);
         cv::cvtColor(resized, preprocessed, cv::COLOR_BGR2RGB);
     }
     else
     {
+        // Letterbox is the repository's default truth source for vendor320 visual and dynamic640.
         const float ratio = std::min(static_cast<float>(input_width_) / static_cast<float>(bgr.cols),
                                      static_cast<float>(input_height_) / static_cast<float>(bgr.rows));
         const int new_w = static_cast<int>(std::round(static_cast<float>(bgr.cols) * ratio));
@@ -396,6 +410,7 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
 
         if (channels == 6)
         {
+            // Vendor-exported `[N,6]` boxes-last outputs are already decoded to xyxy + score + class.
             det.x1 = access(anchor, 0);
             det.y1 = access(anchor, 1);
             det.x2 = access(anchor, 2);
@@ -407,6 +422,7 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
         }
         else
         {
+            // Ultralytics-style heads keep box center/size plus per-class scores in tensor space.
             float max_score = -1.f;
             int max_class = -1;
             for (int64_t channel = 4; channel < channels; ++channel)
@@ -479,6 +495,7 @@ std::vector<Detection> Yolo11Detector::Decode(const OutputTensor& output, const 
 
 InferenceResult Yolo11Detector::ProcessImage(const cv::Mat& bgr, bool render_output)
 {
+    (void)render_output;
     InferenceResult result;
     PreprocessInfo info;
     std::vector<float> nchw;
@@ -539,11 +556,13 @@ BenchmarkSummary Yolo11Detector::BenchmarkImage(const cv::Mat& bgr)
 
             if (options_.benchmark_mode == "full")
             {
+                // Full mode measures preprocess + inference + decode to match application-level timing.
                 if (!PreprocessToNchw(bgr, nchw, info))
                     throw std::runtime_error("preprocess failed inside full benchmark");
             }
             else
             {
+                // Forward mode reuses a cached input tensor so the result is comparable to perf_test.
                 nchw = cached_nchw;
                 info = cached_info;
             }

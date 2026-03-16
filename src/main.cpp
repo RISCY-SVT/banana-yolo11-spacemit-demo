@@ -1,3 +1,8 @@
+/**
+ * @file main.cpp
+ * @brief CLI entry point for the Banana YOLO11 demo application.
+ */
+
 #include <iostream>
 
 #include <onnxruntime_cxx_api.h>
@@ -5,6 +10,10 @@
 #include "banana_demo/app/application.h"
 #include "banana_demo/app/options.h"
 
+/**
+ * @brief Parse CLI arguments and run the demo application.
+ * @return Process exit code compatible with the helper scripts.
+ */
 int main(int argc, char** argv)
 {
     banana_demo::AppOptions options;

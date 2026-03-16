@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+## @file vendor320_runtime_matrix.sh
+## @brief Generate a compact vendor320 runtime comparison bundle.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage for the vendor320 runtime matrix helper.
 usage() {
   cat <<'EOF'
 Usage:
@@ -25,16 +28,19 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   exit 0
 fi
 
+## @brief Run the validated vendor320 runtime matrix locally on Banana.
 run_board_matrix() {
   local repo_dir="$1"
   local image_path="$2"
   local out_dir="$3"
   local model_path="${MODEL_PATH:-$(banana_demo_default_benchmark_model "${repo_dir}")}"
+  local model_sha256
+  model_sha256="$(banana_demo_vendor320_model_hash "${model_path}" 2>/dev/null || banana_demo_sha256_file "${model_path}" 2>/dev/null || echo unknown)"
   local matrix_csv="${out_dir}/runtime_matrix.csv"
   local matrix_md="${out_dir}/runtime_matrix.md"
 
   mkdir -p "${out_dir}"
-  echo "runtime,fix_mode,applied,objects,total_ms,inference_ms,image,log" > "${matrix_csv}"
+  echo "runtime,fix_mode,applied,model_sha256,objects,total_ms,inference_ms,image,log" > "${matrix_csv}"
 
   local runtimes=("rt123:auto" "rt201:0" "rt201:1")
   if [[ -d "${repo_dir}/runtime/rt202b1" ]]; then
@@ -66,14 +72,14 @@ run_board_matrix() {
     objects="$(grep -E 'INFO objects=' "${summary_source}" | tail -n1 | sed -E 's/.*objects=([0-9]+).*/\1/' || true)"
     total_ms="$(grep -E 'INFO objects=' "${summary_source}" | tail -n1 | sed -E 's/.*total_ms=([0-9.]+).*/\1/' || true)"
     inference_ms="$(grep -E 'INFO objects=' "${summary_source}" | tail -n1 | sed -E 's/.*inference_ms=([0-9.]+).*/\1/' || true)"
-    echo "${runtime_tag},${fix_mode},${applied:-0},${objects:-},${total_ms:-},${inference_ms:-},${image_out},${log_out}" >> "${matrix_csv}"
+    echo "${runtime_tag},${fix_mode},${applied:-0},${model_sha256},${objects:-},${total_ms:-},${inference_ms:-},${image_out},${log_out}" >> "${matrix_csv}"
   done
 
   {
-    echo "| runtime | fix_mode | applied | objects | total_ms | inference_ms | image | log |"
-    echo "| --- | --- | --- | --- | --- | --- | --- | --- |"
-    tail -n +2 "${matrix_csv}" | while IFS=, read -r runtime fix applied objects total_ms inference_ms image log_path; do
-      echo "| ${runtime} | ${fix} | ${applied} | ${objects} | ${total_ms} | ${inference_ms} | ${image} | ${log_path} |"
+    echo "| runtime | fix_mode | applied | model_sha256 | objects | total_ms | inference_ms | image | log |"
+    echo "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    tail -n +2 "${matrix_csv}" | while IFS=, read -r runtime fix applied model_sha256_row objects total_ms inference_ms image log_path; do
+      echo "| ${runtime} | ${fix} | ${applied} | ${model_sha256_row} | ${objects} | ${total_ms} | ${inference_ms} | ${image} | ${log_path} |"
     done
   } > "${matrix_md}"
 

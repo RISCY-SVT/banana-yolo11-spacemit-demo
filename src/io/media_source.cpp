@@ -1,3 +1,8 @@
+/**
+ * @file media_source.cpp
+ * @brief Media input handling for still images and live V4L2 cameras.
+ */
+
 #include "banana_demo/io/media_source.h"
 
 #include <algorithm>
@@ -9,6 +14,25 @@
 #include <opencv2/imgcodecs.hpp>
 
 namespace banana_demo {
+
+namespace {
+
+/** @brief Query the active OpenCV backend name without throwing. */
+std::string SafeBackendName(const cv::VideoCapture& capture)
+{
+    try
+    {
+        if (!capture.isOpened())
+            return "unknown";
+        return capture.getBackendName();
+    }
+    catch (const cv::Exception&)
+    {
+        return "unknown";
+    }
+}
+
+}  // namespace
 
 MediaSource::MediaSource(const AppOptions& options) : options_(options) {}
 
@@ -113,6 +137,16 @@ std::string MediaSource::PixelFormat() const
     return camera_pixfmt_actual_;
 }
 
+std::string MediaSource::OpenMethod() const
+{
+    return camera_open_method_;
+}
+
+std::string MediaSource::BackendName() const
+{
+    return camera_backend_name_;
+}
+
 bool MediaSource::OpenImage(std::string& error)
 {
     image_ = cv::imread(image_path_, cv::IMREAD_COLOR);
@@ -129,25 +163,49 @@ bool MediaSource::OpenCamera(std::string& error)
     if (!ResolveCameraTarget(error))
         return false;
 
-    int api = ResolveCameraApi();
+    const int api = ResolveCameraApi();
+    capture_.release();
+    camera_open_method_ = "unopened";
+    camera_backend_name_ = "unknown";
+
+    // Prefer explicit V4L2 opens first, then fall back to generic OpenCV capture only once per target.
+    const auto try_open = [&](const std::string& method_name, auto&& opener) -> bool {
+        capture_.release();
+        if (!opener())
+            return false;
+        camera_open_method_ = method_name;
+        camera_backend_name_ = SafeBackendName(capture_);
+        return true;
+    };
+
     bool opened = false;
     if (camera_index_ >= 0)
-        opened = capture_.open(camera_index_, api);
+        opened = try_open("index-v4l2", [&] { return capture_.open(camera_index_, api); });
 
     if (!opened && !camera_resolved_path_.empty())
-        opened = capture_.open(camera_resolved_path_, api);
+        opened = try_open("resolved-path-v4l2", [&] { return capture_.open(camera_resolved_path_, api); });
 
-    if (!opened && !capture_.open(camera_path_, api))
+    if (!opened && !camera_path_.empty())
+        opened = try_open("requested-path-v4l2", [&] { return capture_.open(camera_path_, api); });
+
+    if (!opened && camera_index_ >= 0)
+        opened = try_open("index-auto", [&] { return capture_.open(camera_index_); });
+
+    if (!opened && !camera_resolved_path_.empty())
+        opened = try_open("resolved-path-auto", [&] { return capture_.open(camera_resolved_path_); });
+
+    if (!opened && !camera_path_.empty())
+        opened = try_open("requested-path-auto", [&] { return capture_.open(camera_path_); });
+
+    if (!opened)
     {
-        if (!capture_.open(camera_path_))
-        {
-            error = "failed to open camera: " + camera_display_name_;
-            return false;
-        }
+        error = "failed to open camera: " + camera_display_name_;
+        return false;
     }
 
     ApplyCameraProperties();
     camera_pixfmt_actual_ = FourccToString(static_cast<int>(capture_.get(cv::CAP_PROP_FOURCC)));
+    camera_backend_name_ = SafeBackendName(capture_);
     return true;
 }
 
@@ -158,6 +216,8 @@ int MediaSource::ResolveCameraApi() const
 
 void MediaSource::ApplyCameraProperties()
 {
+    // Keep capture latency low by preferring the smallest backend queue the driver accepts.
+    capture_.set(cv::CAP_PROP_BUFFERSIZE, 1);
     capture_.set(cv::CAP_PROP_FRAME_WIDTH, options_.camera_width);
     capture_.set(cv::CAP_PROP_FRAME_HEIGHT, options_.camera_height);
     capture_.set(cv::CAP_PROP_FPS, options_.camera_fps);

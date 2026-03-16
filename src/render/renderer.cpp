@@ -1,3 +1,8 @@
+/**
+ * @file renderer.cpp
+ * @brief Frame annotation and display helpers.
+ */
+
 #include "banana_demo/render/renderer.h"
 
 #include <opencv2/imgproc.hpp>
@@ -10,6 +15,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Pick a stable class color from a short palette. */
 cv::Scalar ColorForClass(int class_id)
 {
     static const std::array<cv::Scalar, 10> kPalette = {
@@ -21,6 +27,7 @@ cv::Scalar ColorForClass(int class_id)
     return kPalette[static_cast<size_t>(class_id >= 0 ? class_id : 0) % kPalette.size()];
 }
 
+/** @brief Format the visible label text for one detection. */
 std::string LabelForDetection(const Detection& det, const std::vector<std::string>& labels)
 {
     std::ostringstream oss;
@@ -41,6 +48,7 @@ Renderer::Renderer() = default;
 cv::Mat Renderer::Draw(const cv::Mat& image, const std::vector<Detection>& detections,
                        const std::vector<std::string>& labels, const FrameMetrics& metrics) const
 {
+    // Render detections first so the status text stays on top of the frame.
     cv::Mat out = image.clone();
     for (const auto& det : detections)
     {
@@ -57,6 +65,7 @@ cv::Mat Renderer::Draw(const cv::Mat& image, const std::vector<Detection>& detec
     oss.setf(std::ios::fixed);
     oss.precision(2);
     oss << "obj=" << metrics.objects
+        << " cap=" << metrics.capture_ms
         << " pre=" << metrics.preprocess_ms
         << " inf=" << metrics.inference_ms
         << " post=" << metrics.postprocess_ms
@@ -84,4 +93,3 @@ bool Renderer::TryShow(const std::string& window_name, const cv::Mat& image, std
 }
 
 }  // namespace banana_demo
-

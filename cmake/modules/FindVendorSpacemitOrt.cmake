@@ -1,3 +1,6 @@
+# Helper module that finds the staged public SpaceMIT runtime tree and exposes
+# imported targets for the host ONNX Runtime and the closed execution provider.
+
 if(NOT VENDOR_SPACEMIT_ORT_ROOT)
     if(DEFINED ENV{SPACEMIT_ORT_ROOT})
         set(VENDOR_SPACEMIT_ORT_ROOT "$ENV{SPACEMIT_ORT_ROOT}")

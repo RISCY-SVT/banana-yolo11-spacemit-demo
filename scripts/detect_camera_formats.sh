@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+## @file detect_camera_formats.sh
+## @brief Dump camera device and format information for the selected source.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage for the camera format probe helper.
 usage() {
   cat <<'EOF'
 Usage:

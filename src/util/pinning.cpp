@@ -1,3 +1,8 @@
+/**
+ * @file pinning.cpp
+ * @brief CPU affinity and strict environment helpers for reproducible K1X runs.
+ */
+
 #include "banana_demo/util/pinning.h"
 
 #include <algorithm>
@@ -19,6 +24,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Parse one decimal integer. */
 bool ParseInt(const std::string& text, int& out)
 {
     if (text.empty())
@@ -31,6 +37,7 @@ bool ParseInt(const std::string& text, int& out)
     return true;
 }
 
+/** @brief Parse a Linux CPU list string such as `0-3,6`. */
 bool ParseCpuListString(const std::string& text, std::vector<int>& cpus, std::string& error)
 {
     cpus.clear();
@@ -92,6 +99,7 @@ bool ParseCpuListString(const std::string& text, std::vector<int>& cpus, std::st
     return true;
 }
 
+/** @brief Read the first line from a sysfs-style file. */
 bool ReadFirstLine(const std::string& path, std::string& out, std::string& error)
 {
     std::ifstream ifs(path);
@@ -111,6 +119,7 @@ bool ReadFirstLine(const std::string& path, std::string& out, std::string& error
     return true;
 }
 
+/** @brief Query the CPUs that share CPU0's L2 cache. */
 bool ReadCpu0L2SharedList(std::string& out, std::string& error)
 {
     const char* base = "/sys/devices/system/cpu/cpu0/cache";
@@ -157,6 +166,7 @@ bool ReadCpu0L2SharedList(std::string& out, std::string& error)
     return true;
 }
 
+/** @brief Read the online CPU set from sysfs. */
 bool ReadOnlineCpuList(std::vector<int>& cpus, std::string& error)
 {
     std::string online;
@@ -198,6 +208,7 @@ bool PreparePinCpus(const std::string& pin_spec,
                     std::vector<int>& cluster1_cpus,
                     std::string& error)
 {
+    // Resolve cluster0 from shared L2 topology so the helper adapts to the active board image.
     pin_cpus.clear();
     cluster0_cpus.clear();
     cluster1_cpus.clear();

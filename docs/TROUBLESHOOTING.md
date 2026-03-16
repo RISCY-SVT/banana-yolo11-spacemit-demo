@@ -3,6 +3,12 @@
 ## Display does not open
 
 - Ensure GTK/OpenCV runtime is available on the board.
+- Probe the current board shell before blaming the app:
+
+```bash
+python3 ./scripts/probe_opencv_ui.py
+```
+
 - The board-local image/camera helpers now default to `DISPLAY_FLAG=auto`.
   - if `DISPLAY` / `WAYLAND_DISPLAY` is already exported, they keep it
   - if the shell is a tty but Wayland/X11 sockets are present, they try to reconstruct the local GUI env automatically
@@ -35,6 +41,10 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 - Run `./scripts/detect_camera_formats.sh` first and use the reported resolved capture node if needed.
 - Try `--camera-pixfmt mjpg` or `--camera-pixfmt yuyv`.
 - Prefer MJPG if the camera supports it at higher FPS.
+- The app now reports:
+  - `camera_open_method`
+  - `camera_backend`
+  so you can see whether it succeeded via numeric `index-v4l2`, path-based V4L2, or generic fallback.
 - Board-local `./scripts/run_camera_demo.sh` now defaults to:
   - `DISPLAY_FLAG=auto`
   - `HEADLESS_FLAG=auto`
@@ -45,8 +55,18 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
   - `MAX_FRAMES=200`
 - If the helper appears idle, check the early progress lines:
   - `first frame captured; starting inference now`
+  - `warmup preview shown while inference initializes`
   - `frame=...`
   Those are now emitted before waiting for 10 frames, so a slow first inference no longer looks like a hang.
+- If the live path still feels slow, inspect the timing fields:
+  - `capture_ms` = camera read plus backend decode
+  - `inference_ms` = runtime cost only
+  - `total_ms` = preprocess + inference + postprocess + render, excluding `capture_ms`
+- On the current default `dynamic640` live path, a sustained run settled near:
+  - `capture_ms ~= 50`
+  - `inference_ms ~= 213`
+  - `render_ms ~= 10`
+  so the remaining FPS limit is mostly real runtime cost, not a silent script stall.
 
 ## Vendor 320x320 detections are missing or look suspicious
 
@@ -79,7 +99,7 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
 BANANA_DEMO_RUNTIME_TAG=rt201 BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0 ./scripts/run_image_demo.sh /path/to/image.jpg models/vendor/yolo11/yolov11n_320x320.q.onnx 320 0.25
 ```
 
-  - this workaround is much slower than `rt123`, so `rt123` remains the default visual runtime
+- this workaround is much slower than `rt123`, so `rt123` remains the default visual runtime
 - If a run shows `alloc failed(...)`, do not use it as evidence for vendor320 correctness.
 - A clean-room retest with `/dev/tcm` idle and no `alloc failed(...)` still showed:
   - `rt201` bad for vendor320

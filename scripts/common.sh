@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+## @file common.sh
+## @brief Shared shell helpers for host-wrapper and board-local workflows.
+## @details This file centralizes runtime selection, validated vendor320
+## workaround guards, camera auto-detection, and remote staging utilities so
+## the individual scripts stay thin and consistent.
 
 banana_demo_repo_root() {
   local source_path="${BASH_SOURCE[0]}"
@@ -10,6 +15,7 @@ banana_demo_repo_root() {
   cd "${script_dir}/.." && pwd
 }
 
+## @brief Return whether the current process is running directly on the Banana.
 banana_demo_is_board_mode() {
   if [[ "${BANANA_DEMO_EXEC_MODE:-}" == "board" ]]; then
     return 0
@@ -17,6 +23,7 @@ banana_demo_is_board_mode() {
   [[ "$(uname -m)" == "riscv64" ]]
 }
 
+## @brief Resolve the repository root that board-local scripts should use.
 banana_demo_board_root() {
   if [[ -n "${BOARD_DIR:-}" ]]; then
     printf '%s\n' "${BOARD_DIR}"
@@ -33,6 +40,7 @@ banana_demo_host_board_dir() {
   printf '%s\n' "${BOARD_DIR:-/home/svt/banana-yolo11-spacemit-demo}"
 }
 
+## @brief Return the default visual model path for user-facing demos.
 banana_demo_default_visual_model() {
   local repo_root="$1"
   printf '%s\n' "${repo_root}/models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx"
@@ -42,16 +50,19 @@ banana_demo_default_visual_input_size() {
   printf '640\n'
 }
 
+## @brief Return the official vendor320 benchmark model path.
 banana_demo_default_benchmark_model() {
   local repo_root="$1"
   printf '%s\n' "${repo_root}/models/vendor/yolo11/yolov11n_320x320.q.onnx"
 }
 
+## @brief Return whether a model path refers to the public vendor320 bundle.
 banana_demo_is_vendor320_model() {
   local model_path="${1:-}"
   [[ "$(basename "${model_path}")" == "yolov11n_320x320.q.onnx" ]]
 }
 
+## @brief Compute the SHA256 of a file using the best available local tool.
 banana_demo_sha256_file() {
   local file_path="${1:-}"
   [[ -f "${file_path}" ]] || return 1
@@ -66,6 +77,7 @@ banana_demo_sha256_file() {
   return 1
 }
 
+## @brief Check whether a hash matches the validated public vendor320 bundle.
 banana_demo_is_validated_vendor320_model_hash() {
   local model_hash="${1:-}"
   case "${model_hash}" in
@@ -76,12 +88,14 @@ banana_demo_is_validated_vendor320_model_hash() {
   return 1
 }
 
+## @brief Compute the official vendor320 model hash if the path matches the bundle name.
 banana_demo_vendor320_model_hash() {
   local model_path="${1:-}"
   banana_demo_is_vendor320_model "${model_path}" || return 1
   banana_demo_sha256_file "${model_path}"
 }
 
+## @brief Return whether the model path matches the validated official vendor320 bundle.
 banana_demo_is_validated_vendor320_model() {
   local model_path="${1:-}"
   local model_hash
@@ -134,6 +148,7 @@ banana_demo_runtime_tag_from_override() {
   esac
 }
 
+## @brief Resolve the runtime tag for the requested model and usage profile.
 banana_demo_resolve_runtime_tag() {
   local model_path="$1"
   local runtime_profile="${2:-visual}"
@@ -171,6 +186,7 @@ banana_demo_join_colon_paths() {
   printf '%s\n' "${out}"
 }
 
+## @brief Export runtime library paths for the selected staged runtime tree.
 banana_demo_export_runtime_env() {
   local repo_root="$1"
   local runtime_tag="$2"
@@ -181,6 +197,10 @@ banana_demo_export_runtime_env() {
   fi
 }
 
+## @brief Apply the validated public rt201 visual workaround for vendor320.
+## @details The workaround is intentionally SHA256-guarded so it only applies to
+## the exact official vendor320 bundle that was validated during the forensic
+## passes.
 banana_demo_apply_vendor320_rt201_visual_fix() {
   local model_path="$1"
   local runtime_tag="$2"
@@ -223,6 +243,7 @@ banana_demo_apply_vendor320_rt201_visual_fix() {
   echo "INFO: enabling vendor320 rt201 visual workaround for validated official model (sha256=${model_hash}) (disable float16 epilogue; keep /model.23 tail Slice/Add/Sub ops on CPU)." >&2
 }
 
+## @brief Restore local GUI session variables when display output is requested.
 banana_demo_prepare_display_env() {
   local display_flag="${1:-0}"
   [[ "${display_flag}" == "1" ]] || return 0
@@ -250,6 +271,7 @@ banana_demo_gui_socket_available() {
   [[ -S "${runtime_dir}/wayland-0" || -S /tmp/.X11-unix/X0 ]]
 }
 
+## @brief Resolve `display=auto|0|1` to a concrete display flag plus reason.
 banana_demo_resolve_display_flag() {
   local requested="${1:-auto}"
   case "${requested}" in
@@ -275,6 +297,7 @@ banana_demo_resolve_display_flag() {
   esac
 }
 
+## @brief Resolve `headless=auto|0|1` based on the final display decision.
 banana_demo_resolve_headless_flag() {
   local requested="${1:-auto}"
   local display_flag="${2:-0}"
@@ -295,6 +318,7 @@ banana_demo_resolve_headless_flag() {
   esac
 }
 
+## @brief Parse `/dev/videoN` into a numeric camera index.
 banana_demo_parse_video_index() {
   local candidate="${1:-}"
   if [[ "${candidate}" =~ ^/dev/video([0-9]+)$ ]]; then
@@ -304,6 +328,7 @@ banana_demo_parse_video_index() {
   return 1
 }
 
+## @brief Resolve a camera argument to a concrete `/dev/videoN` path when possible.
 banana_demo_resolve_camera_path() {
   local candidate="${1:-}"
   if [[ -z "${candidate}" || "${candidate}" == "auto" ]]; then
@@ -323,6 +348,7 @@ banana_demo_resolve_camera_path() {
   printf '%s\n' "${candidate}"
 }
 
+## @brief Prefer stable V4L capture symlinks and then fall back to USB video nodes.
 banana_demo_default_camera_path() {
   local candidate
 
@@ -369,6 +395,7 @@ banana_demo_default_camera_path() {
   return 1
 }
 
+## @brief Choose the best sane pixel format for the requested camera mode.
 banana_demo_choose_camera_pixfmt() {
   local camera_path="${1:-}"
   local camera_width="${2:-1280}"
@@ -420,11 +447,13 @@ banana_demo_choose_camera_pixfmt() {
   printf 'auto\n'
 }
 
+## @brief Clear OMP/GOMP variables so strict benchmark runs stay reproducible.
 banana_demo_unset_parallel_env() {
   unset OMP_NUM_THREADS OMP_PROC_BIND OMP_PLACES OMP_SCHEDULE OMP_MAX_ACTIVE_LEVELS OMP_NESTED OMP_STACKSIZE OMP_CANCELLATION OMP_DISPLAY_ENV
   unset GOMP_CPU_AFFINITY GOMP_STACKSIZE GOMP_SPINCOUNT
 }
 
+## @brief Resolve the canonical default input image from staged or board-local paths.
 banana_demo_resolve_default_image() {
   local repo_root="$1"
   local candidates=(
@@ -445,6 +474,7 @@ banana_demo_resolve_default_image() {
   return 1
 }
 
+## @brief Stage a local file into the deployed board tree when needed.
 banana_demo_stage_remote_file() {
   local target="$1"
   local board_dir="$2"

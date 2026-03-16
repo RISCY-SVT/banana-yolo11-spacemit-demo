@@ -1,3 +1,8 @@
+/**
+ * @file logger.cpp
+ * @brief Timestamped stderr and file logging implementation.
+ */
+
 #include "banana_demo/util/logger.h"
 
 #include <chrono>
@@ -10,6 +15,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Format the current wall clock time for log lines. */
 std::string TimestampNow()
 {
     const auto now = std::chrono::system_clock::now();
@@ -46,6 +52,7 @@ void Logger::Error(const std::string& message)
 
 void Logger::Write(const char* level, const std::string& message)
 {
+    // Keep console and file logs identical so copied snippets remain comparable.
     const std::string line = "[" + TimestampNow() + "] " + level + " " + message;
     if (!quiet_ || std::string(level) == "ERROR")
         std::cerr << line << '\n';
@@ -54,4 +61,3 @@ void Logger::Write(const char* level, const std::string& message)
 }
 
 }  // namespace banana_demo
-

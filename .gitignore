@@ -3,6 +3,7 @@ install/
 third_party/vendor/
 third_party/spacemit-demo/
 .deps/
+.cache/
 .venv/
 models/vendor/
 models/generated/

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+## @file deploy_to_banana.sh
+## @brief Build and deploy the staged runtime, binaries, scripts, and models to Banana.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

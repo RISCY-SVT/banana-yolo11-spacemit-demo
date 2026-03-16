@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+## @file run_camera_demo.sh
+## @brief Run the live camera demo either locally on Banana or through SSH.
+## @details Board-local runs default to interactive `display=auto`, while host
+## wrapper runs remain safely headless by default.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage and product-policy notes.
 usage() {
   cat <<'EOF'
 Usage:

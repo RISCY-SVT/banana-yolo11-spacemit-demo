@@ -19,16 +19,44 @@ This file is updated after board validation.
   - Board-local `run_camera_demo.sh` now defaults to `DISPLAY_FLAG=auto`, `HEADLESS_FLAG=auto`, and `MAX_FRAMES=0`.
   - In a tty shell with no exported GUI vars, the helper detects local Wayland/X11 sockets and attempts live display automatically.
   - If GUI is still unavailable, the helper prints an explicit fallback message and the app emits early plus periodic progress logs instead of appearing stuck.
+  - The app now reports:
+    - `camera_open_method`
+    - `camera_backend`
+    - `capture_ms`
+    so live camera behavior is diagnosable without rebuilding.
+  - In display mode, the first raw frame is shown immediately with a warmup banner while the first inference initializes.
   - Headless live inference is stable.
   - Default camera runs no longer create AVI output unless explicitly requested.
   - A board-local camera run from repo root reached:
     - `display_resolved=1`
     - `display_reason=gui-socket`
+    - `camera_open_method=index-v4l2`
+    - `camera_backend=V4L2`
+    - `warmup preview shown while inference initializes`
     - `display active, live preview should now be visible; press ESC/q to exit`
   - A forced headless run reached:
     - `display_resolved=0`
     - `camera running in headless mode; periodic progress logs enabled`
     - early frame logs such as `frame=1 ...` without waiting for 10 frames
+  - Measured live camera timing on the default visual path (`dynamic640`, `MAX_FRAMES=20`, headless):
+    - frame 1:
+      - `capture_ms=355.168`
+      - `inference_ms=887.049`
+      - `total_ms=943.833`
+    - frame 10:
+      - `capture_ms=49.250`
+      - `inference_ms=212.994`
+      - `total_ms=260.773`
+    - frame 20:
+      - `capture_ms=50.477`
+      - `inference_ms=212.787`
+      - `total_ms=259.410`
+    - whole 20-frame loop:
+      - `effective_fps=2.220142`
+  - Interpretation:
+    - sustained live throughput is now explainable instead of opaque
+    - after warmup, the default visual path is limited mostly by `dynamic640` inference cost plus about `50 ms` of camera capture/MJPG decode overhead
+    - a low-risk latency tweak (`CAP_PROP_BUFFERSIZE=1`) is now applied, but no safe product-policy change has yet been measured that would materially raise live FPS without changing the validated model/runtime choice
 
 - Forward-only benchmark
   - Vendor320 perf stack (`rt201`) `onnxruntime_perf_test`:
@@ -100,6 +128,9 @@ This file is updated after board validation.
   - A compact reproducibility helper now exists:
     - `scripts/vendor320_runtime_matrix.sh`
     - it saves `rt123`, `rt201 raw`, and `rt201 fixed` image outputs plus a compact matrix table
+  - A local docs helper now exists:
+    - `scripts/gen_doxygen.sh`
+    - it generates HTML docs and warning logs even on hosts that do not have `doxygen` installed globally
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

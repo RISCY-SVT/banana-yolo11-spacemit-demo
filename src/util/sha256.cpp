@@ -1,3 +1,8 @@
+/**
+ * @file sha256.cpp
+ * @brief Small self-contained SHA256 implementation for output hashing.
+ */
+
 #include "banana_demo/util/sha256.h"
 
 #include <array>
@@ -7,6 +12,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Mutable SHA256 hashing state. */
 struct Sha256State
 {
     uint32_t h[8];
@@ -15,6 +21,7 @@ struct Sha256State
     size_t buffer_len;
 };
 
+/** @brief SHA256 round constants. */
 constexpr uint32_t kSha256K[64] = {
     0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
     0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
@@ -26,11 +33,13 @@ constexpr uint32_t kSha256K[64] = {
     0x748f82eeu, 0x78a5636fu, 0x84c87814u, 0x8cc70208u, 0x90befffau, 0xa4506cebu, 0xbef9a3f7u, 0xc67178f2u,
 };
 
+/** @brief Rotate right helper used by SHA256 rounds. */
 inline uint32_t Rotr32(uint32_t x, uint32_t n)
 {
     return (x >> n) | (x << (32 - n));
 }
 
+/** @brief Initialize a fresh SHA256 state. */
 void Sha256Init(Sha256State& s)
 {
     s.h[0] = 0x6a09e667u;
@@ -45,6 +54,7 @@ void Sha256Init(Sha256State& s)
     s.buffer_len = 0;
 }
 
+/** @brief Process one 64-byte SHA256 block. */
 void Sha256Transform(Sha256State& s, const uint8_t* block)
 {
     uint32_t w[64];
@@ -101,6 +111,7 @@ void Sha256Transform(Sha256State& s, const uint8_t* block)
     s.h[7] += h;
 }
 
+/** @brief Append bytes to the hash state. */
 void Sha256Update(Sha256State& s, const uint8_t* data, size_t len)
 {
     if (!data || len == 0)
@@ -118,6 +129,7 @@ void Sha256Update(Sha256State& s, const uint8_t* data, size_t len)
     }
 }
 
+/** @brief Finalize the hash state and return the 32-byte digest. */
 std::array<uint8_t, 32> Sha256Final(Sha256State& s)
 {
     std::array<uint8_t, 32> out{};
@@ -183,4 +195,3 @@ std::string Sha256Hex(const std::vector<uint8_t>& data)
 }
 
 }  // namespace banana_demo
-

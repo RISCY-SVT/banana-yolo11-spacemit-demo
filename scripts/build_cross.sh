@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+## @file build_cross.sh
+## @brief Cross-build the demo for all validated runtime variants.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,6 +14,7 @@ if [[ ! -f /data/opencv/install-k1x-gtk3/lib/cmake/opencv4/OpenCVConfig.cmake ]]
   exit 1
 fi
 
+## @brief Configure, build, and install one runtime-specific binary variant.
 build_variant() {
   local runtime_tag="$1"
   local runtime_root="$2"

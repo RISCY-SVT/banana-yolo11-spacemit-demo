@@ -1,3 +1,7 @@
+# This project keeps the build system intentionally small: cross-toolchain setup
+# lives in `cmake/toolchains`, vendor runtime discovery lives in
+# `cmake/modules`, and the install layout mirrors the deploy tree used on the
+# Banana board.
 cmake_minimum_required(VERSION 3.20)
 
 project(banana_yolo11_spacemit_demo VERSION 0.1.0 LANGUAGES CXX)

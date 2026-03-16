@@ -36,6 +36,7 @@ The application supports:
 - full pipeline benchmarking
 - annotated image/video output
 - per-stage metrics logging
+- explicit camera capture/decode timing separate from inference timing
 
 The repository is intentionally usable in two modes:
 
@@ -248,6 +249,8 @@ Board-local camera default behavior:
 - `HEADLESS_FLAG=auto`
 - `MAX_FRAMES=0`
 - live preview stays open until `q` / `ESC` or `Ctrl-C`
+- the app logs the resolved HighGUI backend, capture backend, and camera open method
+- the first raw frame is pushed to the preview immediately with a warmup banner while the first inference initializes
 - if GUI env/backend is not usable, the helper prints an explicit headless fallback message and the app emits periodic progress logs instead of appearing stuck
 
 Host-wrapper camera default behavior:
@@ -274,12 +277,27 @@ By default the camera helper does not record video. Recording is opt-in:
 SAVE_OUTPUT_REMOTE=/home/svt/banana-yolo11-spacemit-demo/outputs/camera_320.avi ./scripts/run_camera_demo.sh /dev/video20
 ```
 
+Backend sanity probe from Banana:
+
+```bash
+python3 ./scripts/probe_opencv_ui.py
+```
+
 Board-local direct execution after deploy:
 
 ```bash
 cd /home/svt/banana-yolo11-spacemit-demo
 BANANA_DEMO_EXEC_MODE=board ./scripts/run_camera_demo.sh
 ```
+
+## Generate API docs
+
+```bash
+./scripts/gen_doxygen.sh
+```
+
+If `doxygen` is not installed system-wide, the helper downloads a user-local
+Ubuntu package set into `.cache/doxygen-ubuntu/` and runs it from there.
 
 If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the visual helpers now auto-enable the validated public workaround. Disable it with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0` only when you intentionally want the raw low-latency perf stack.
 

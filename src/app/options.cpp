@@ -1,3 +1,8 @@
+/**
+ * @file options.cpp
+ * @brief CLI argument parsing and usage text for the demo executable.
+ */
+
 #include "banana_demo/app/options.h"
 
 #include <cstdlib>
@@ -7,6 +12,7 @@ namespace banana_demo {
 
 namespace {
 
+/** @brief Parse one integer CLI argument. */
 bool ParseInt(const char* text, int& out)
 {
     if (!text)
@@ -19,6 +25,7 @@ bool ParseInt(const char* text, int& out)
     return true;
 }
 
+/** @brief Parse one floating-point CLI argument. */
 bool ParseFloat(const char* text, float& out)
 {
     if (!text)
@@ -31,6 +38,7 @@ bool ParseFloat(const char* text, float& out)
     return true;
 }
 
+/** @brief Return whether the next argv token exists. */
 bool NeedValue(int i, int argc)
 {
     return i + 1 < argc;

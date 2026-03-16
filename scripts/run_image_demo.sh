@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+## @file run_image_demo.sh
+## @brief Run the image demo either locally on Banana or via the host wrapper.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage and current runtime-policy notes.
 usage() {
   cat <<'EOF'
 Usage:
