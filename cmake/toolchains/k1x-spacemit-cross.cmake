@@ -1,6 +1,9 @@
-# Canonical K1X cross-toolchain file. The sysroot stays split into an immutable
-# base tree and a mutable overlay, while OpenCV lives in a separate staged
-# prefix.
+#[[
+@file k1x-spacemit-cross.cmake
+@brief Canonical CMake cross-toolchain file for the Banana K1X target.
+@details The sysroot remains split into an immutable base tree and a mutable
+overlay, while OpenCV lives in a separate staged prefix.
+]]
 
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR riscv64)

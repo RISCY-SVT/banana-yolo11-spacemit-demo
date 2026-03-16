@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file fetch_models.sh
+## @brief Fetch pinned public vendor YOLO11 model artifacts.
+## @details The script is intentionally lock-file driven so the exact public
+## model bundle and its hashes are reproducible.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -6,6 +10,9 @@ LOCK_FILE="${ROOT_DIR}/third_party_manifest/models.lock"
 OUT_DIR="${ROOT_DIR}/models/vendor/yolo11"
 mkdir -p "${OUT_DIR}"
 
+## @brief Fetch one locked model artifact and print its SHA256.
+## @param key Lock-file key containing the source URL.
+## @param output_name File name used under the staged model directory.
 fetch_file() {
   local key="$1"
   local output_name="$2"

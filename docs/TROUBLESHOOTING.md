@@ -44,6 +44,8 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 - The app now reports:
   - `camera_open_method`
   - `camera_backend`
+  - `camera_profile`
+  - `camera_request`
   so you can see whether it succeeded via numeric `index-v4l2`, path-based V4L2, or generic fallback.
 - Board-local `./scripts/run_camera_demo.sh` now defaults to:
   - `DISPLAY_FLAG=auto`
@@ -67,6 +69,31 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
   - `inference_ms ~= 213`
   - `render_ms ~= 10`
   so the remaining FPS limit is mostly real runtime cost, not a silent script stall.
+- If you want the responsive trusted live path instead of the highest-detail live path, use:
+
+```bash
+./scripts/run_camera_demo_fast.sh
+```
+
+- Fast-live currently means:
+  - model: official vendor320 INT8
+  - runtime: `rt123`
+  - camera request: `640x480 @ 60`
+  - trade-off: lower spatial detail, much better responsiveness
+- On the current camera, the measured fast-live comparison was:
+  - `640x480` request:
+    - actual mode `640x480 YUYV 30 FPS`
+    - steady post-warmup preview rate about `14.4-14.9 FPS`
+  - `1280x720` request:
+    - actual mode `1280x720 YUYV 7.5 FPS`
+    - `capture_ms ~= 832-837`
+    - whole-loop rate about `1 FPS`
+  - so the repo intentionally keeps `640x480` as the fast-live default
+- To save a single annotated camera frame instead of a video:
+
+```bash
+DISPLAY_FLAG=0 HEADLESS_FLAG=1 MAX_FRAMES=1 SAVE_OUTPUT=/home/svt/banana-yolo11-spacemit-demo/outputs/camera_fast.jpg ./scripts/run_camera_demo_fast.sh
+```
 
 ## Vendor 320x320 detections are missing or look suspicious
 
@@ -84,6 +111,7 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
 
 - Do not assume that raising or lowering the threshold alone will fix vendor320 on the wrong runtime.
 - The validated public runtime split is:
+  - `run_camera_demo_fast.sh` keeps the trusted `rt123` visual stack; it does not silently switch to the raw `rt201` perf path
   - `1.2.2` / `1.2.3`: semantically good vendor320 references
   - `1.2.4`: semantically good vendor320 package line, but still bad for dynamic640
   - `2.0.1`: fast vendor320 benchmark path, but not the trusted visual choice
@@ -146,6 +174,7 @@ BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_image_demo.sh /path/to/photo.jpg mod
   - `rt201 raw`
   - `rt201 fixed`
   together with annotated outputs and a compact CSV/Markdown summary.
+- Use `./scripts/check_doxygen_coverage.sh` when you want to verify that all tracked source/script/CMake files still carry `@file`.
 
 ## xquant is slow or pulls a huge dependency chain
 

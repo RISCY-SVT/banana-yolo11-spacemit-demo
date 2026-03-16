@@ -56,6 +56,32 @@ banana_demo_default_benchmark_model() {
   printf '%s\n' "${repo_root}/models/vendor/yolo11/yolov11n_320x320.q.onnx"
 }
 
+## @brief Return the trusted fast-live model path used for responsive camera demos.
+banana_demo_default_fast_live_model() {
+  local repo_root="$1"
+  printf '%s\n' "${repo_root}/models/vendor/yolo11/yolov11n_320x320.q.onnx"
+}
+
+## @brief Return the default square input size for the fast-live camera profile.
+banana_demo_default_fast_live_input_size() {
+  printf '320\n'
+}
+
+## @brief Return the preferred fast-live camera width in pixels.
+banana_demo_default_fast_live_camera_width() {
+  printf '640\n'
+}
+
+## @brief Return the preferred fast-live camera height in pixels.
+banana_demo_default_fast_live_camera_height() {
+  printf '480\n'
+}
+
+## @brief Return the preferred fast-live camera FPS request.
+banana_demo_default_fast_live_camera_fps() {
+  printf '60\n'
+}
+
 ## @brief Return whether a model path refers to the public vendor320 bundle.
 banana_demo_is_vendor320_model() {
   local model_path="${1:-}"

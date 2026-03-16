@@ -21,6 +21,7 @@ The repository is designed to be usable by another engineer from scratch once th
   - vendor320 visual path: `rt123` = `spacemit-ort.riscv64.1.2.3`
   - vendor320 perf path: `rt201` = `spacemit-ort.riscv64.2.0.1`
   - dynamic640 path: `rt201` = `spacemit-ort.riscv64.2.0.1`
+  - fast-live camera path: trusted vendor320 visual stack on `rt123`
 - Benchmark model path:
   - official vendor YOLO11n INT8 320x320 ONNX
 - Default visual demo path:
@@ -31,6 +32,7 @@ The application supports:
 
 - single-image inference
 - USB camera live inference
+- explicit fast-live camera mode
 - headless and display modes
 - forward-only benchmarking
 - full pipeline benchmarking
@@ -252,6 +254,7 @@ Board-local camera default behavior:
 - the app logs the resolved HighGUI backend, capture backend, and camera open method
 - the first raw frame is pushed to the preview immediately with a warmup banner while the first inference initializes
 - if GUI env/backend is not usable, the helper prints an explicit headless fallback message and the app emits periodic progress logs instead of appearing stuck
+- saving a still image is supported by pointing `SAVE_OUTPUT` at `.jpg`, `.jpeg`, `.png`, or `.bmp`
 
 Host-wrapper camera default behavior:
 
@@ -259,10 +262,51 @@ Host-wrapper camera default behavior:
 - `HEADLESS_FLAG=auto`
 - `MAX_FRAMES=200`
 
+## Run fast-live camera demo
+
+```bash
+./scripts/run_camera_demo_fast.sh
+```
+
+Fast-live camera behavior:
+
+- model: official vendor320 INT8 ONNX
+- runtime: `rt123`
+- preprocess: letterbox
+- input size: `320`
+- default camera request: `640x480 @ 60`
+- purpose: better live responsiveness than the default dynamic640 path
+- trade-off: lower spatial detail than the default 640 visual path
+
+Measured on the current USB camera:
+
+- default dynamic640 live path, steady post-warmup:
+  - `capture_ms ~= 48-50`
+  - `inference_ms ~= 206-210`
+  - `total_ms ~= 254-260`
+  - practical steady preview rate: about `3.8-3.9 FPS`
+- fast-live vendor320 path, steady post-warmup:
+  - `capture_ms ~= 1.1-1.2`
+  - `inference_ms ~= 50-53`
+  - `total_ms ~= 67-69`
+  - practical steady preview rate: about `14.4-14.9 FPS`
+
+The current fast-live defaults were chosen from measured candidates:
+
+- `640x480` request is the preferred setting on the current camera
+- `1280x720` request forced the camera into `YUYV @ 7.5 FPS` and dropped the effective loop rate to roughly `1 FPS`
+- therefore the repo intentionally keeps `640x480` as the fast-live default instead of pretending the larger capture size is still responsive
+
 Useful environment overrides:
 
 ```bash
 DISPLAY_FLAG=1 CAMERA_PIXFMT=mjpg CONFIDENCE=0.25 ./scripts/run_camera_demo.sh /dev/video20
+```
+
+Fast-live override example:
+
+```bash
+DISPLAY_FLAG=1 ./scripts/run_camera_demo_fast.sh /dev/video20
 ```
 
 Runtime override:
@@ -275,6 +319,12 @@ By default the camera helper does not record video. Recording is opt-in:
 
 ```bash
 SAVE_OUTPUT_REMOTE=/home/svt/banana-yolo11-spacemit-demo/outputs/camera_320.avi ./scripts/run_camera_demo.sh /dev/video20
+```
+
+Still-image capture from camera mode is also supported:
+
+```bash
+DISPLAY_FLAG=0 HEADLESS_FLAG=1 MAX_FRAMES=1 SAVE_OUTPUT=/home/svt/banana-yolo11-spacemit-demo/outputs/camera_fast.jpg ./scripts/run_camera_demo_fast.sh
 ```
 
 Backend sanity probe from Banana:
@@ -298,6 +348,12 @@ BANANA_DEMO_EXEC_MODE=board ./scripts/run_camera_demo.sh
 
 If `doxygen` is not installed system-wide, the helper downloads a user-local
 Ubuntu package set into `.cache/doxygen-ubuntu/` and runs it from there.
+
+Verify literal file-level coverage with:
+
+```bash
+./scripts/check_doxygen_coverage.sh
+```
 
 If you explicitly override the model to the vendor 320x320 INT8 ONNX, the script auto-selects `rt123`. If you explicitly force `BANANA_DEMO_RUNTIME_TAG=rt201`, the visual helpers now auto-enable the validated public workaround. Disable it with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0` only when you intentionally want the raw low-latency perf stack.
 
@@ -349,6 +405,8 @@ The binary supports:
 
 - Default visual demo model:
   - `models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx`
+- Default fast-live camera model:
+  - `models/vendor/yolo11/yolov11n_320x320.q.onnx`
 - Default visual demo confidence:
   - `0.25`
 - Vendor low-latency benchmark model:
@@ -363,6 +421,10 @@ The binary supports:
   - disable with `BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0`
 - Board-local camera defaults:
   - `DISPLAY_FLAG=auto`, `HEADLESS_FLAG=auto`, `MAX_FRAMES=0`
+- Fast-live camera defaults:
+  - vendor320 visual path on `rt123`
+  - `320x320` letterbox inference
+  - `640x480 @ 60` camera request
 - Host-wrapper camera defaults:
   - `DISPLAY_FLAG=0`, `HEADLESS_FLAG=auto`, `MAX_FRAMES=200`
 - Board app root after deploy:
@@ -370,7 +432,8 @@ The binary supports:
 - Required photo for reproducible image tests:
   - `/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg`
 - USB camera:
-  - prefer MJPG if available
+  - default dynamic640 path prefers MJPG at `1280x720`
+  - fast-live path intentionally uses the best measured mode for the chosen request, which is currently `YUYV` at `640x480`
 
 ## Troubleshooting
 
@@ -391,10 +454,12 @@ The binary supports:
   - `rt202b1` still does not fix vendor320 even with the same public workaround
   - public `1.2.4` is good for vendor320, but it still breaks dynamic640, so it is not the repo default
   - keep the default 640x640 dynamic INT8 path for the best user-facing visual quality
+  - use `./scripts/run_camera_demo_fast.sh` when you want the responsive trusted live path instead of the highest-detail live path
 - Vendor runtime accidentally replaced by system ORT:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
 - Reproducibility helper:
   - `./scripts/vendor320_runtime_matrix.sh` saves a compact `rt123` / `rt201 raw` / `rt201 fixed` comparison table plus annotated outputs
+  - `./scripts/check_doxygen_coverage.sh` proves that every tracked source/script/CMake file carries an `@file` block
 
 ## Licensing and vendor binaries
 

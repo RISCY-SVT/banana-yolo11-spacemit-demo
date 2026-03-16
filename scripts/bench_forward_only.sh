@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+## @file bench_forward_only.sh
+## @brief Run forward-only benchmark checks for the current runtime/model path.
+## @details This helper keeps vendor `perf_test` and app-side forward-only
+## numbers close together so benchmark regressions stay easy to spot.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage and the default forward-only benchmark policy.
 usage() {
   cat <<'EOF'
 Usage:

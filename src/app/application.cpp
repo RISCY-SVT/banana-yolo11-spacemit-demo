@@ -101,6 +101,15 @@ std::string ResolveOutputPath(const AppOptions& options, const std::string& defa
     return default_name;
 }
 
+/** @brief Return whether a camera save path should be treated as a still image. */
+bool IsStillImagePath(const std::string& path)
+{
+    if (path.empty())
+        return false;
+    const std::string ext = std::filesystem::path(path).extension().string();
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp";
+}
+
 /**
  * @brief Show an immediate preview frame while the first inference is still warming up.
  */
@@ -308,14 +317,25 @@ int Application::RunCameraMode()
     logger.Info("camera warmup note: the first inference can take noticeably longer while the runtime prepares the graph");
 
     cv::VideoWriter writer;
+    cv::Mat saved_still_frame;
+    const bool save_still_frame = IsStillImagePath(options_.save_output);
     if (!options_.save_output.empty())
     {
-        const int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-        if (!writer.open(options_.save_output, fourcc,
-                         std::max(1, options_.camera_fps),
-                         cv::Size(std::max(1, source.FrameWidth()), std::max(1, source.FrameHeight()))))
+        // Camera mode keeps video recording opt-in, but also supports a single
+        // annotated still when the requested output path has an image suffix.
+        if (save_still_frame)
         {
-            logger.Warn("failed to open video writer: " + options_.save_output);
+            logger.Info("camera save_output mode=still-image");
+        }
+        else
+        {
+            const int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+            if (!writer.open(options_.save_output, fourcc,
+                             std::max(1, options_.camera_fps),
+                             cv::Size(std::max(1, source.FrameWidth()), std::max(1, source.FrameHeight()))))
+            {
+                logger.Warn("failed to open video writer: " + options_.save_output);
+            }
         }
     }
 
@@ -363,6 +383,10 @@ int Application::RunCameraMode()
 
         if (writer.isOpened())
             writer.write(result.annotated);
+        if (save_still_frame)
+            // Retain only the latest annotated frame so `MAX_FRAMES=1` can
+            // produce a deterministic still capture without enabling video I/O.
+            saved_still_frame = result.annotated.clone();
 
         if (display_enabled)
         {
@@ -405,6 +429,22 @@ int Application::RunCameraMode()
     logger.Info("camera_frames=" + std::to_string(frame_index) +
                 " total_loop_ms=" + std::to_string(elapsed_ms) +
                 " effective_fps=" + std::to_string(frame_index > 0 && elapsed_ms > 0.0 ? 1000.0 * frame_index / elapsed_ms : 0.0));
+
+    if (save_still_frame)
+    {
+        if (saved_still_frame.empty())
+        {
+            logger.Warn("save_output requested a still image but no annotated frame was captured");
+        }
+        else if (!cv::imwrite(options_.save_output, saved_still_frame))
+        {
+            logger.Warn("failed to save still image: " + options_.save_output);
+        }
+        else
+        {
+            logger.Info("saved_output=" + options_.save_output);
+        }
+    }
 
     return 0;
 }

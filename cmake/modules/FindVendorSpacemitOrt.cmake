@@ -1,5 +1,9 @@
-# Helper module that finds the staged public SpaceMIT runtime tree and exposes
-# imported targets for the host ONNX Runtime and the closed execution provider.
+#[[
+@file FindVendorSpacemitOrt.cmake
+@brief Locate the staged public SpaceMIT runtime tree.
+@details The module exposes imported CMake targets for the host ONNX Runtime
+and the closed SpaceMIT execution provider without requiring system packages.
+]]
 
 if(NOT VENDOR_SPACEMIT_ORT_ROOT)
     if(DEFINED ENV{SPACEMIT_ORT_ROOT})

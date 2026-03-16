@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file fetch_vendor_runtime.sh
+## @brief Fetch and unpack the pinned public vendor runtime tarballs.
+## @details The helper prefers local cache copies when available, validates
+## SHA256, and stages each runtime under `third_party/vendor`.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -8,6 +12,10 @@ CACHE_DIR="${ROOT_DIR}/.deps/cache"
 
 mkdir -p "${OUT_DIR}" "${CACHE_DIR}"
 
+## @brief Fetch one locked runtime archive and unpack it into the vendor tree.
+## @param name Archive base name and extracted runtime directory name.
+## @param url Public archive URL for the runtime tarball.
+## @param sha256_expected Expected archive SHA256.
 fetch_one_runtime() {
   local name="$1"
   local url="$2"

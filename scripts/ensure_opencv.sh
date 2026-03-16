@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+## @file ensure_opencv.sh
+## @brief Check that the expected OpenCV runtime or cross-build install exists.
+## @details Board-local runs accept either system `opencv4` packages or the
+## staged repo-local runtime, while host-side checks look for the canonical K1X
+## cross install under `/data/opencv/install-k1x-gtk3`.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file export_ultralytics_onnx.sh
+## @brief Export a fixed-size Ultralytics YOLO11 model to ONNX.
+## @details This is the custom fallback path used when a public vendor model is
+## unavailable, for example the current 640x640 flow.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,4 +28,3 @@ find . -maxdepth 1 -type f -name "*.onnx" -print0 | while IFS= read -r -d '' fil
   mv -f "${file}" "${OUT_DIR}/"
 done
 find "${OUT_DIR}" -maxdepth 1 -type f -name "*.onnx" -print | sort
-

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file quantize_xquant.sh
+## @brief Quantize a YOLO11 ONNX model with the public SpaceMIT xquant tool.
+## @details This script supports both static and dynamic INT8 flows and records
+## the inspected ONNX graph alongside the generated artifacts.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,6 +18,7 @@ CONFIG_PATH="${WORK_DIR}/xquant_config.json"
 VENV_DIR="${ROOT_DIR}/.venv/xquant"
 XQUANT_MODE="${XQUANT_MODE:-static}"
 
+## @brief Resolve which Python interpreter should provide `xquant`.
 resolve_python() {
   if [[ -n "${XQUANT_PYTHON:-}" ]]; then
     echo "${XQUANT_PYTHON}"
@@ -26,6 +31,8 @@ resolve_python() {
   echo "${VENV_DIR}/bin/python3"
 }
 
+## @brief Ensure the selected Python environment contains the required tools.
+## @param py Candidate Python executable path.
 prepare_python() {
   local py="$1"
   if [[ -x "${py}" ]]; then

@@ -29,6 +29,13 @@ Default visual demo path:
   - host-wrapper display: 0
   - host-wrapper max_frames: 200
 
+Fast-live companion:
+  - script: ./scripts/run_camera_demo_fast.sh
+  - model: official vendor320 INT8
+  - runtime: rt123 visual path
+  - camera request: 640x480 MJPG-preferred
+  - goal: better live responsiveness than the default dynamic640 path
+
 Vendor 320x320 note:
   - visual runs auto-select the validated rt123 stack
   - if you explicitly force rt201 in visual mode, the script auto-enables the validated public workaround
@@ -53,6 +60,7 @@ fi
 
 if banana_demo_is_board_mode; then
   REPO_DIR="$(banana_demo_board_root)"
+  CAMERA_PROFILE="${BANANA_DEMO_CAMERA_PROFILE:-default-visual}"
   CAMERA_PATH="${1:-${CAMERA_PATH:-auto}}"
   MODEL_PATH="${2:-${MODEL_PATH:-$(banana_demo_default_visual_model "${REPO_DIR}")}}"
   INPUT_SIZE="${3:-${INPUT_SIZE:-$(banana_demo_default_visual_input_size)}}"
@@ -103,6 +111,7 @@ if banana_demo_is_board_mode; then
   echo "headless_request=${HEADLESS_REQUEST}" >&2
   echo "headless_resolved=${HEADLESS_FLAG}" >&2
   echo "headless_reason=${HEADLESS_REASON}" >&2
+  echo "camera_profile=${CAMERA_PROFILE}" >&2
   echo "max_frames=${MAX_FRAMES}" >&2
   echo "vendor320_rt201_visual_fix_applied=${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX_APPLIED:-0}" >&2
   if banana_demo_is_vendor320_model "${MODEL_PATH}"; then
@@ -114,6 +123,7 @@ if banana_demo_is_board_mode; then
   fi
   echo "camera_selected=${CAMERA_PATH}" >&2
   echo "camera_resolved=${CAMERA_REALPATH}" >&2
+  echo "camera_request=${CAMERA_WIDTH}x${CAMERA_HEIGHT}@${CAMERA_FPS}" >&2
   echo "camera_pixfmt_selected=${CAMERA_PIXFMT}" >&2
 
   cmd=(
@@ -154,6 +164,7 @@ MAX_FRAMES="${4:-${MAX_FRAMES:-200}}"
 DISPLAY_FLAG="${DISPLAY_FLAG:-0}"
 HEADLESS_FLAG="${HEADLESS_FLAG:-auto}"
 CONFIDENCE="${CONFIDENCE:-0.25}"
+BANANA_DEMO_CAMERA_PROFILE="${BANANA_DEMO_CAMERA_PROFILE:-default-visual}"
 SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-}"
 LOG_FILE_REMOTE="${LOG_FILE_REMOTE:-${BOARD_DIR}/logs/camera_${INPUT_SIZE}.log}"
 CAMERA_WIDTH="${CAMERA_WIDTH:-1280}"
@@ -163,6 +174,7 @@ CAMERA_PIXFMT="${CAMERA_PIXFMT:-}"
 REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
 
 remote_cmd="cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board QUIET=0 DISPLAY_FLAG='${DISPLAY_FLAG}' HEADLESS_FLAG='${HEADLESS_FLAG}' CONFIDENCE='${CONFIDENCE}' LOG_FILE='${LOG_FILE_REMOTE}' BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX='${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}'"
+remote_cmd="${remote_cmd} BANANA_DEMO_CAMERA_PROFILE='${BANANA_DEMO_CAMERA_PROFILE}'"
 remote_cmd="${remote_cmd} CAMERA_WIDTH='${CAMERA_WIDTH}' CAMERA_HEIGHT='${CAMERA_HEIGHT}' CAMERA_FPS='${CAMERA_FPS}'"
 if [[ -n "${CAMERA_PIXFMT}" ]]; then
   remote_cmd="${remote_cmd} CAMERA_PIXFMT='${CAMERA_PIXFMT}'"

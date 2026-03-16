@@ -16,6 +16,12 @@ This file is updated after board validation.
 - Camera demo
   - Default camera auto-selection resolves the USB camera through `/dev/v4l/by-id/... -> /dev/video20`.
   - The default camera auto mode chooses MJPG for `1280x720` because it offers `60 FPS` on the connected USB camera, versus `7.5 FPS` for YUYV.
+  - A dedicated fast-live path now exists:
+    - script: `./scripts/run_camera_demo_fast.sh`
+    - model: official vendor320 INT8 ONNX
+    - runtime: `rt123`
+    - preprocess: letterbox
+    - default camera request: `640x480 @ 60`
   - Board-local `run_camera_demo.sh` now defaults to `DISPLAY_FLAG=auto`, `HEADLESS_FLAG=auto`, and `MAX_FRAMES=0`.
   - In a tty shell with no exported GUI vars, the helper detects local Wayland/X11 sockets and attempts live display automatically.
   - If GUI is still unavailable, the helper prints an explicit fallback message and the app emits early plus periodic progress logs instead of appearing stuck.
@@ -27,6 +33,7 @@ This file is updated after board validation.
   - In display mode, the first raw frame is shown immediately with a warmup banner while the first inference initializes.
   - Headless live inference is stable.
   - Default camera runs no longer create AVI output unless explicitly requested.
+  - Camera mode can now save a single annotated still image when `SAVE_OUTPUT` points to an image suffix such as `.jpg`.
   - A board-local camera run from repo root reached:
     - `display_resolved=1`
     - `display_reason=gui-socket`
@@ -53,10 +60,36 @@ This file is updated after board validation.
       - `total_ms=259.410`
     - whole 20-frame loop:
       - `effective_fps=2.220142`
+  - Measured live camera timing on the fast-live path (`vendor320 rt123`, `640x480`, `MAX_FRAMES=20`, headless):
+    - frame 1:
+      - `capture_ms=327.421`
+      - `inference_ms=67.927`
+      - `total_ms=89.945`
+    - frame 10:
+      - `capture_ms=1.176`
+      - `inference_ms=50.442`
+      - `total_ms=67.134`
+    - frame 20:
+      - `capture_ms=1.076`
+      - `inference_ms=52.964`
+      - `total_ms=69.465`
+    - whole 20-frame loop:
+      - `effective_fps=8.960986`
+  - Fast-live candidate comparison:
+    - `640x480` request:
+      - actual camera mode: `640x480`, `YUYV`, `30 FPS`
+      - steady preview rate after warmup: about `14.4-14.9 FPS`
+    - `1280x720` request:
+      - actual camera mode: `1280x720`, `YUYV`, `7.5 FPS`
+      - `capture_ms ~= 832-837`
+      - whole 20-frame loop: `effective_fps=0.998994`
+    - result:
+      - `640x480` is the correct fast-live default on the current USB camera
   - Interpretation:
     - sustained live throughput is now explainable instead of opaque
     - after warmup, the default visual path is limited mostly by `dynamic640` inference cost plus about `50 ms` of camera capture/MJPG decode overhead
-    - a low-risk latency tweak (`CAP_PROP_BUFFERSIZE=1`) is now applied, but no safe product-policy change has yet been measured that would materially raise live FPS without changing the validated model/runtime choice
+    - a low-risk latency tweak (`CAP_PROP_BUFFERSIZE=1`) remains applied
+    - the new fast-live profile is the measured low-risk product answer for better responsiveness without abandoning the trusted visual path
 
 - Forward-only benchmark
   - Vendor320 perf stack (`rt201`) `onnxruntime_perf_test`:
@@ -131,6 +164,9 @@ This file is updated after board validation.
   - A local docs helper now exists:
     - `scripts/gen_doxygen.sh`
     - it generates HTML docs and warning logs even on hosts that do not have `doxygen` installed globally
+  - A file-coverage helper now exists:
+    - `scripts/check_doxygen_coverage.sh`
+    - it proves that every tracked source/header/script/CMake file carries an `@file` block
 
 - Quantization notes
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.

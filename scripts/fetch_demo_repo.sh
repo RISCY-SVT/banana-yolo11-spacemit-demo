@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file fetch_demo_repo.sh
+## @brief Clone or refresh the public vendor `spacemit-demo` reference repo.
+## @details The fetched tree is kept outside the product path and serves as a
+## public reference source for models, examples, and runtime-chain forensics.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,4 +20,3 @@ else
 fi
 
 git -C "${DEST}" rev-parse HEAD
-

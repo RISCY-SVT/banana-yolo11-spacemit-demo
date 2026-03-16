@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file 04-overlay-update.sh
+## @brief Refresh the K1X sysroot overlay from the Banana board.
+## @details This imported reference helper is the canonical source for the
+## overlay update workflow used by the demo repo and other K1X projects.
 set -euo pipefail
 
 ###############################################################################
@@ -229,6 +233,8 @@ if [[ -s "${PC_PATH_FILE}" ]]; then
   done < "${PC_PATH_FILE}"
 fi
 
+## @brief Deduplicate one bash array passed by name while preserving order.
+## @param array_name Name of the bash array variable to deduplicate.
 dedup_array() {
   local -n input=$1
   local -n output=$2
@@ -243,6 +249,7 @@ dedup_array() {
   done
 }
 
+## @brief Sync ROS-dependent package file lists from the board snapshot.
 sync_rosdep_packages() {
   echo "[overlay][ros2] Checking rosdep package list at ${ROS2_ROSDEP_PKG_LIST}"
   if [[ ! -s "${ROS2_ROSDEP_PKG_LIST}" ]]; then
@@ -361,6 +368,7 @@ printf '  %s\n' "${HEADER_DIRS[@]}"
 echo "[overlay] Library/pkgconfig directories:"
 printf '  %s\n' "${LIB_DIRS[@]}"
 
+## @brief Rsync selected header trees into the overlay sysroot.
 rsync_headers() {
   local inc_dir="$1"
   echo "[overlay] Syncing headers from ${inc_dir}"
@@ -382,6 +390,7 @@ rsync_headers() {
     "${BANANA_SNAPSHOT}${inc_dir}/"
 }
 
+## @brief Rsync selected libraries and symlinks into the overlay sysroot.
 rsync_libs() {
   local lib_dir="$1"
   echo "[overlay] Syncing libs/pkgconfig from ${lib_dir}"

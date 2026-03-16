@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file 01-env.sh
+## @brief Canonical shared environment for K1X cross-build helpers.
+## @details This imported reference copy mirrors the local helper that exports
+## toolchain, sysroot, board, and ROS-related paths expected by the demo repo.
 set -uo pipefail
 
 ###############################################################################

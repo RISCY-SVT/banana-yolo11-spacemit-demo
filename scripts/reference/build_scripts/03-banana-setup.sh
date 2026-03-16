@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file 03-banana-setup.sh
+## @brief Prepare the Banana board with the development packages needed by K1X work.
+## @details This imported reference helper installs the GTK, GStreamer, X11,
+## and related packages needed for overlay extraction and on-board testing.
 set -euo pipefail
 
 ###############################################################################
@@ -15,6 +19,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
+## @brief Install an optional package without aborting the whole board setup.
+## @param pkg Debian package name to install.
 install_optional_pkg() {
   local pkg="$1"
   if apt-get install -y "$pkg"; then

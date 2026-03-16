@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+## @file bench_full_demo.sh
+## @brief Run full-pipeline benchmark checks for the current visual path.
+## @details This helper measures preprocess plus inference plus postprocess in a
+## reproducible headless image mode so demo-pipeline regressions are visible.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/common.sh"
 
+## @brief Print CLI usage and current visual benchmark policy.
 usage() {
   cat <<'EOF'
 Usage:

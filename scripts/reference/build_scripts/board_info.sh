@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file board_info.sh
+## @brief Print a compact Banana board hardware and environment snapshot.
+## @details This imported reference helper is intentionally read-only and useful
+## for attaching board context to build or benchmark logs.
 set -euo pipefail
 
 echo "== uname -a =="

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file cluster_topology.sh
+## @brief Print K1X cache-sharing topology information for the current board.
+## @details The output helps explain cluster-aware pinning and cache locality
+## decisions in higher-level benchmark scripts.
 set -euo pipefail
 
 declare -A l2_groups

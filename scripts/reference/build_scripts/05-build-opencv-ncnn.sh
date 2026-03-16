@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+## @file 05-build-opencv-ncnn.sh
+## @brief Build OpenCV and ncnn for the K1X Banana target.
+## @details This imported reference helper remains the canonical local workflow
+## for producing the GTK3-enabled OpenCV stack used by the demo repo.
 set -euo pipefail
 
 ###############################################################################
@@ -29,6 +33,7 @@ COMMON_ARCH_FLAGS="${K1_ARCH_FLAGS}"
 USE_SYNC=false
 USE_TEST=false
 
+## @brief Print CLI usage for the combined OpenCV and ncnn build helper.
 usage() {
   cat <<EOF
 Usage: $0 [--sync-to-banana] [--test-on-banana] [-h|--help]
@@ -48,6 +53,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+## @brief Require that one path already exists before continuing.
+## @param p Required file or directory path.
 require_path() {
   local p="$1"
   if [[ ! -e "$p" ]]; then
@@ -56,6 +63,7 @@ require_path() {
   fi
 }
 
+## @brief Validate the minimum build prerequisites before launching CMake/Ninja.
 check_prereqs() {
   require_path "${TOOLCHAIN_ROOT}/bin/riscv64-unknown-linux-gnu-gcc"
   require_path "${K1_SYSROOT_OVERLAY}"
@@ -64,6 +72,7 @@ check_prereqs() {
   require_path "${OPENCV_SRC}/platforms/linux/riscv64-gcc.toolchain.cmake"
 }
 
+## @brief Configure and build the OpenCV cross tree for K1X.
 build_opencv() {
   echo "==> Building OpenCV for K1X (RVV+GTK3)"
   local build_dir="${OPENCV_SRC}/build-k1x-gtk3"
@@ -97,6 +106,7 @@ build_opencv() {
   echo "==> OpenCV installed to ${OPENCV_INSTALL}"
 }
 
+## @brief Configure and build the ncnn cross tree for K1X.
 build_ncnn() {
   echo "==> Building NCNN (examples) for K1X"
   local build_dir="${NCNN_SRC}/build-riscv"
@@ -124,6 +134,7 @@ build_ncnn() {
   echo "==> NCNN examples built in ${build_dir}/examples"
 }
 
+## @brief Sync built artifacts to the Banana board.
 deploy_to_banana() {
   echo "==> Deploying to banana (${BANANA_USER}@${BANANA_HOST})"
   rsync -avz --delete "${OPENCV_INSTALL}/" "${BANANA_USER}@${BANANA_HOST}:/home/${BANANA_USER}/opencv-install-k1x-gtk3/"
@@ -139,6 +150,7 @@ deploy_to_banana() {
   fi
 }
 
+## @brief Run a quick on-board validation after deployment.
 run_tests_on_banana() {
   echo "==> Running quick GUI test on banana"
   ssh "${BANANA_USER}@${BANANA_HOST}" bash -lc "'
@@ -157,6 +169,7 @@ run_tests_on_banana() {
   '"
 }
 
+## @brief Main entry point for the combined build helper.
 main() {
   check_prereqs
   build_opencv
