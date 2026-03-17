@@ -82,6 +82,70 @@ std::string HashDetections(const std::vector<Detection>& detections)
     return Sha256Hex(bytes);
 }
 
+/** @brief Render ONNX tensor element types in compact log form. */
+const char* TensorElementTypeName(ONNXTensorElementDataType type)
+{
+    switch (type)
+    {
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+        return "float32";
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
+        return "float16";
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16:
+        return "bfloat16";
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
+        return "uint8";
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+        return "int8";
+    default:
+        return "other";
+    }
+}
+
+/** @brief Return whether the path matches one repo-generated FP16 keep-IO model. */
+bool IsGeneratedFp16KeepIoModel(const std::string& model_path)
+{
+    const std::string name = std::filesystem::path(model_path).filename().string();
+    return name == "yolov11n_320x320.fp16_iop32.onnx" || name == "yolov11n_640x640.fp16_iop32.onnx";
+}
+
+/** @brief Return whether the path matches one repo-generated full-I/O FP16 model. */
+bool IsGeneratedFp16FullIoModel(const std::string& model_path)
+{
+    const std::string name = std::filesystem::path(model_path).filename().string();
+    return name == "yolov11n_320x320.fp16.onnx" || name == "yolov11n_640x640.fp16.onnx";
+}
+
+/** @brief Return one known fixed output tensor shape for the repo-managed FP16 models. */
+std::vector<int64_t> KnownFp16OutputShape(int input_size)
+{
+    if (input_size == 320)
+        return {1, 84, 2100};
+    if (input_size == 640)
+        return {1, 84, 8400};
+    return {};
+}
+
+/** @brief Convert one host float buffer to ORT float16 storage. */
+std::vector<Ort::Float16_t> ToFloat16Buffer(const std::vector<float>& values)
+{
+    std::vector<Ort::Float16_t> fp16(values.size());
+    std::transform(values.begin(), values.end(), fp16.begin(), [](float value) {
+        return Ort::Float16_t(value);
+    });
+    return fp16;
+}
+
+/** @brief Convert one ORT float16 tensor buffer back to float32 host values. */
+std::vector<float> FromFloat16Buffer(const Ort::Float16_t* values, size_t count)
+{
+    std::vector<float> fp32(count);
+    std::transform(values, values + count, fp32.begin(), [](Ort::Float16_t value) {
+        return static_cast<float>(value);
+    });
+    return fp32;
+}
+
 /** @brief Compute intersection-over-union between two boxes. */
 float Iou(const Detection& a, const Detection& b)
 {
@@ -171,7 +235,36 @@ void Yolo11Detector::LoadLabels()
 
 void Yolo11Detector::ResolveInputShape()
 {
-    input_shape_ = session_->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
+    metadata_fallback_applied_ = false;
+    metadata_fallback_reason_.clear();
+    input_shape_.clear();
+
+    try
+    {
+        auto input_info = session_->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+        input_shape_ = input_info.GetShape();
+        input_element_type_ = input_info.GetElementType();
+    }
+    catch (const std::exception& ex)
+    {
+        metadata_fallback_applied_ = true;
+        metadata_fallback_reason_ += std::string("input-metadata-exception=") + ex.what();
+        input_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+    }
+
+    try
+    {
+        output_element_type_ = session_->GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo().GetElementType();
+    }
+    catch (const std::exception& ex)
+    {
+        metadata_fallback_applied_ = true;
+        if (!metadata_fallback_reason_.empty())
+            metadata_fallback_reason_ += ';';
+        metadata_fallback_reason_ += std::string("output-metadata-exception=") + ex.what();
+        output_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+    }
+
     if (input_shape_.size() == 4)
     {
         input_height_ = input_shape_[2] > 0 ? static_cast<int>(input_shape_[2]) : options_.input_size;
@@ -181,6 +274,82 @@ void Yolo11Detector::ResolveInputShape()
     {
         input_height_ = options_.input_size;
         input_width_ = options_.input_size;
+        if (IsGeneratedFp16KeepIoModel(options_.model) || IsGeneratedFp16FullIoModel(options_.model))
+        {
+            input_shape_ = {1, 3, options_.input_size, options_.input_size};
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "input-shape-fallback";
+        }
+    }
+
+    if (IsGeneratedFp16KeepIoModel(options_.model))
+    {
+        if (input_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+        {
+            input_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "input-dtype=fp32-by-model-contract";
+        }
+        if (output_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+        {
+            output_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "output-dtype=fp32-by-model-contract";
+        }
+    }
+    else if (IsGeneratedFp16FullIoModel(options_.model))
+    {
+        if (input_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+        {
+            input_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "input-dtype=fp16-by-model-contract";
+        }
+        if (output_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+        {
+            output_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "output-dtype=fp16-by-model-contract";
+        }
+    }
+    else
+    {
+        if (input_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT &&
+            input_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+        {
+            input_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "input-dtype=fp32-generic-fallback";
+        }
+        if (output_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT &&
+            output_element_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+        {
+            output_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "output-dtype=fp32-generic-fallback";
+        }
+        if (input_shape_.empty() && options_.input_size > 0)
+        {
+            input_shape_ = {1, 3, options_.input_size, options_.input_size};
+            metadata_fallback_applied_ = true;
+            if (!metadata_fallback_reason_.empty())
+                metadata_fallback_reason_ += ';';
+            metadata_fallback_reason_ += "input-shape=generic-fallback";
+        }
     }
 }
 
@@ -325,8 +494,23 @@ Yolo11Detector::OutputTensor Yolo11Detector::RunSingle(const std::vector<float>&
 {
     const std::array<int64_t, 4> dims = {1, 3, input_height_, input_width_};
     Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-        mem_info, const_cast<float*>(nchw.data()), nchw.size(), dims.data(), dims.size());
+    Ort::Value input_tensor{nullptr};
+    std::vector<Ort::Float16_t> nchw_fp16;
+    if (input_element_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    {
+        input_tensor = Ort::Value::CreateTensor<float>(
+            mem_info, const_cast<float*>(nchw.data()), nchw.size(), dims.data(), dims.size());
+    }
+    else if (input_element_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+    {
+        nchw_fp16 = ToFloat16Buffer(nchw);
+        input_tensor = Ort::Value::CreateTensor<Ort::Float16_t>(
+            mem_info, nchw_fp16.data(), nchw_fp16.size(), dims.data(), dims.size());
+    }
+    else
+    {
+        throw std::runtime_error("unsupported input tensor dtype: " + std::string(TensorElementTypeName(input_element_type_)));
+    }
     const char* input_name = input_name_.c_str();
 
     std::vector<Ort::Value> outputs = session_->Run(Ort::RunOptions{nullptr},
@@ -337,10 +521,40 @@ Yolo11Detector::OutputTensor Yolo11Detector::RunSingle(const std::vector<float>&
 
     OutputTensor output;
     auto info = outputs[0].GetTensorTypeAndShapeInfo();
-    output.shape = info.GetShape();
-    const size_t count = info.GetElementCount();
-    const float* ptr = outputs[0].GetTensorData<float>();
-    output.data.assign(ptr, ptr + count);
+    try
+    {
+        output.shape = info.GetShape();
+    }
+    catch (const std::exception&)
+    {
+        output.shape = KnownFp16OutputShape(options_.input_size);
+    }
+    if (output.shape.empty())
+        output.shape = KnownFp16OutputShape(options_.input_size);
+    size_t count = 0;
+    try
+    {
+        count = info.GetElementCount();
+    }
+    catch (const std::exception&)
+    {
+        for (int64_t dim : output.shape)
+            count = count == 0 ? static_cast<size_t>(dim) : count * static_cast<size_t>(dim);
+    }
+    if (output_element_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    {
+        const float* ptr = outputs[0].GetTensorData<float>();
+        output.data.assign(ptr, ptr + count);
+    }
+    else if (output_element_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+    {
+        const auto* ptr = outputs[0].GetTensorData<Ort::Float16_t>();
+        output.data = FromFloat16Buffer(ptr, count);
+    }
+    else
+    {
+        throw std::runtime_error("unsupported output tensor dtype: " + std::string(TensorElementTypeName(output_element_type_)));
+    }
     return output;
 }
 
@@ -647,7 +861,11 @@ std::string Yolo11Detector::ProviderSummary() const
         oss << input_shape_[i];
     }
     oss << "]"
+        << " input_dtype=" << TensorElementTypeName(input_element_type_)
+        << " output0_dtype=" << TensorElementTypeName(output_element_type_)
         << " preprocess=" << (ResolvePreprocessMode() == PreprocessMode::kResize ? "resize" : "letterbox");
+    if (metadata_fallback_applied_)
+        oss << " metadata_fallback=" << metadata_fallback_reason_;
     return oss.str();
 }
 

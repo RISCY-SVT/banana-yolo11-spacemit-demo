@@ -19,7 +19,7 @@ Default benchmark path:
   - input size: 320
 
 Environment overrides:
-  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1
   - auto/visual uses rt123 for vendor320 correctness and rt201 otherwise
   BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
 EOF

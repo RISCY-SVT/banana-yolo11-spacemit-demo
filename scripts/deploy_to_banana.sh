@@ -8,15 +8,22 @@ TARGET="${BANANA_SSH_TARGET:-svt@banana}"
 BOARD_DIR="${BOARD_DIR:-/home/svt/banana-yolo11-spacemit-demo}"
 
 source /data/build_scripts/01-env.sh
+source "${ROOT_DIR}/scripts/common.sh"
 
 "${ROOT_DIR}/scripts/build_cross.sh"
 "${ROOT_DIR}/scripts/fetch_models.sh"
 
-ssh "${TARGET}" "mkdir -p '${BOARD_DIR}' '${BOARD_DIR}/bin' '${BOARD_DIR}/runtime/rt123' '${BOARD_DIR}/runtime/rt201' '${BOARD_DIR}/scripts' '${BOARD_DIR}/assets' '${BOARD_DIR}/logs' '${BOARD_DIR}/outputs' '${BOARD_DIR}/inputs'"
-rsync -av "${ROOT_DIR}/install/k1x-release-rt123/bin/banana_yolo11_demo" "${TARGET}:${BOARD_DIR}/bin/banana_yolo11_demo_rt123"
-rsync -av "${ROOT_DIR}/install/k1x-release-rt201/bin/banana_yolo11_demo" "${TARGET}:${BOARD_DIR}/bin/banana_yolo11_demo_rt201"
-rsync -av "${ROOT_DIR}/third_party/vendor/spacemit-ort.riscv64.1.2.3/" "${TARGET}:${BOARD_DIR}/runtime/rt123/"
-rsync -av "${ROOT_DIR}/third_party/vendor/spacemit-ort.riscv64.2.0.1/" "${TARGET}:${BOARD_DIR}/runtime/rt201/"
+VARIANTS="${BANANA_DEMO_DEPLOY_VARIANTS:-${BANANA_DEMO_BUILD_VARIANTS:-rt123,rt201}}"
+IFS=',' read -r -a DEPLOY_VARIANTS <<<"${VARIANTS}"
+runtime_mkdir_cmd="mkdir -p '${BOARD_DIR}' '${BOARD_DIR}/bin' '${BOARD_DIR}/scripts' '${BOARD_DIR}/assets' '${BOARD_DIR}/logs' '${BOARD_DIR}/outputs' '${BOARD_DIR}/inputs'"
+for runtime_tag in "${DEPLOY_VARIANTS[@]}"; do
+  runtime_mkdir_cmd="${runtime_mkdir_cmd} '${BOARD_DIR}/runtime/${runtime_tag}'"
+done
+ssh "${TARGET}" "${runtime_mkdir_cmd}"
+for runtime_tag in "${DEPLOY_VARIANTS[@]}"; do
+  rsync -av "${ROOT_DIR}/install/k1x-release-${runtime_tag}/bin/banana_yolo11_demo" "${TARGET}:${BOARD_DIR}/bin/banana_yolo11_demo_${runtime_tag}"
+  rsync -av "$(banana_demo_runtime_vendor_root "${ROOT_DIR}" "${runtime_tag}")/" "${TARGET}:${BOARD_DIR}/runtime/${runtime_tag}/"
+done
 rsync -av "${ROOT_DIR}/models/" "${TARGET}:${BOARD_DIR}/models/"
 rsync -av "${ROOT_DIR}/assets/" "${TARGET}:${BOARD_DIR}/assets/"
 rsync -av "${ROOT_DIR}/scripts/" "${TARGET}:${BOARD_DIR}/scripts/"

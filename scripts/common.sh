@@ -136,6 +136,35 @@ banana_demo_runtime_dir() {
   printf '%s\n' "${repo_root}/runtime/${runtime_tag}"
 }
 
+## @brief Map one runtime tag to the staged vendor runtime directory name.
+banana_demo_runtime_vendor_dir_name() {
+  local runtime_tag="$1"
+  case "${runtime_tag}" in
+    rt123)
+      printf 'spacemit-ort.riscv64.1.2.3\n'
+      ;;
+    rt201)
+      printf 'spacemit-ort.riscv64.2.0.1\n'
+      ;;
+    rt202b1)
+      printf 'spacemit-ort.riscv64.2.0.2+beta1\n'
+      ;;
+    *)
+      echo "ERROR: unsupported runtime tag=${runtime_tag}; use rt123|rt201|rt202b1" >&2
+      return 2
+      ;;
+  esac
+}
+
+## @brief Return the host-side staged vendor runtime root for one runtime tag.
+banana_demo_runtime_vendor_root() {
+  local repo_root="$1"
+  local runtime_tag="$2"
+  local dir_name
+  dir_name="$(banana_demo_runtime_vendor_dir_name "${runtime_tag}")"
+  printf '%s\n' "${repo_root}/third_party/vendor/${dir_name}"
+}
+
 banana_demo_binary_path() {
   local repo_root="$1"
   local runtime_tag="$2"
@@ -167,8 +196,12 @@ banana_demo_runtime_tag_from_override() {
       printf 'rt201\n'
       return 0
       ;;
+    rt202b1|2.0.2|2.0.2+beta1)
+      printf 'rt202b1\n'
+      return 0
+      ;;
     *)
-      echo "ERROR: unsupported BANANA_DEMO_RUNTIME_TAG=${override}; use auto|rt123|rt201" >&2
+      echo "ERROR: unsupported BANANA_DEMO_RUNTIME_TAG=${override}; use auto|rt123|rt201|rt202b1" >&2
       return 2
       ;;
   esac
@@ -508,7 +541,7 @@ banana_demo_stage_remote_file() {
   local remote_subdir="$4"
   if [[ -f "${local_path}" ]]; then
     ssh "${target}" "mkdir -p '${board_dir}/${remote_subdir}'"
-    rsync -av "${local_path}" "${target}:${board_dir}/${remote_subdir}/"
+    rsync -av "${local_path}" "${target}:${board_dir}/${remote_subdir}/" >&2
     printf '%s/%s/%s\n' "${board_dir}" "${remote_subdir}" "$(basename "${local_path}")"
     return 0
   fi

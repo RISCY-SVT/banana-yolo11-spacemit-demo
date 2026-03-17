@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 source /data/build_scripts/01-env.sh
+source "${ROOT_DIR}/scripts/common.sh"
 "${ROOT_DIR}/scripts/ensure_opencv.sh"
 "${ROOT_DIR}/scripts/fetch_vendor_runtime.sh"
 
@@ -38,16 +39,5 @@ build_variant() {
 VARIANTS="${BANANA_DEMO_BUILD_VARIANTS:-rt201,rt123}"
 IFS=',' read -r -a BUILD_VARIANTS <<<"${VARIANTS}"
 for runtime_tag in "${BUILD_VARIANTS[@]}"; do
-  case "${runtime_tag}" in
-    rt201)
-      build_variant "rt201" "${ROOT_DIR}/third_party/vendor/spacemit-ort.riscv64.2.0.1"
-      ;;
-    rt123)
-      build_variant "rt123" "${ROOT_DIR}/third_party/vendor/spacemit-ort.riscv64.1.2.3"
-      ;;
-    *)
-      echo "Unknown runtime tag in BANANA_DEMO_BUILD_VARIANTS: ${runtime_tag}" >&2
-      exit 2
-      ;;
-  esac
+  build_variant "${runtime_tag}" "$(banana_demo_runtime_vendor_root "${ROOT_DIR}" "${runtime_tag}")"
 done

@@ -221,3 +221,37 @@ CALIB_COUNT=10 ./scripts/quantize_xquant.sh 640 /path/to/model.onnx demo_640
 ```bash
 XQUANT_MODE=dynamic ./scripts/quantize_xquant.sh 640 /path/to/model.onnx demo_640_dynamic
 ```
+
+## FP16 model matrix fails or looks incomplete
+
+- Generate the repo-managed FP16 models with:
+
+```bash
+./scripts/fetch_or_build_fp16_models.sh
+```
+
+- The helper currently emits two model families:
+  - `*.fp16.onnx`
+    - true FP16 I/O
+    - dtype-correct
+    - currently not a recommended public board runtime path because the tested runtime lines crashed or corrupted on them
+  - `*.fp16_iop32.onnx`
+    - internal FP16 weights with FP32 I/O
+    - this is the only viable board-side FP16 chain currently exercised by the repo
+- Do not trust Ultralytics `half=True` CPU export blindly.
+  - it was tested here and still produced FP32 ONNX
+  - the repository rejects those artifacts for the FP16 matrix
+- Current public runtime behavior from the measured matrix:
+  - `rt123` + `320 keep_io` -> heap corruption
+  - `rt123` + `640 keep_io` -> heap corruption
+  - `rt201` + `320 keep_io` -> reshape/runtime failure
+  - `rt202b1` + `320 keep_io` -> compile/reshape failure
+  - `rt201` + `640 keep_io` -> works
+  - `rt202b1` + `640 keep_io` -> works
+- If you want the reproducible full matrix workflow, use:
+
+```bash
+./scripts/bench_fp16_matrix.sh
+```
+
+- If the generated board-side tables look malformed, prefer the cleaned copies stored in the task artifacts or rerun after updating the parser in `scripts/bench_fp16_matrix.sh`.

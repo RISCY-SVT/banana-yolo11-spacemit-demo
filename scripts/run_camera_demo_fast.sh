@@ -30,7 +30,7 @@ the trusted vendor320 visual stack and does not silently switch to a raw perf
 runtime.
 
 Environment overrides:
-  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1
   BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
   CAMERA_WIDTH / CAMERA_HEIGHT / CAMERA_FPS
   CAMERA_PIXFMT=auto|mjpg|yuyv

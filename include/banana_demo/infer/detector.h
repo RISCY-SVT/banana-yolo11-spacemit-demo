@@ -232,10 +232,18 @@ private:
     std::vector<const char*> output_name_ptrs_;
     /** Runtime-reported input tensor shape. */
     std::vector<int64_t> input_shape_;
+    /** Runtime-reported input tensor element type. */
+    ONNXTensorElementDataType input_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+    /** Runtime-reported first output tensor element type. */
+    ONNXTensorElementDataType output_element_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
     /** Resolved input tensor width in pixels. */
     int input_width_ = 0;
     /** Resolved input tensor height in pixels. */
     int input_height_ = 0;
+    /** Whether the runtime metadata had to be repaired from a known model contract. */
+    bool metadata_fallback_applied_ = false;
+    /** Human-readable explanation of the applied metadata fallback, if any. */
+    std::string metadata_fallback_reason_;
     /** Loaded label list aligned with decoded class ids. */
     std::vector<std::string> labels_;
 };

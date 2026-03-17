@@ -106,6 +106,7 @@ The fetch helper stages both public tarballs required by this repository:
 
 - `rt123` -> `spacemit-ort.riscv64.1.2.3`
 - `rt201` -> `spacemit-ort.riscv64.2.0.1`
+- `rt202b1` -> `spacemit-ort.riscv64.2.0.2+beta1`
 
 ## Models
 
@@ -154,6 +155,49 @@ Notes:
     - `rt202b1` still remains bad even with the same workaround
 - No official 640x640 vendor INT8 URL is currently pinned, so 640 uses the custom export + xquant path.
 - In practice, the fast and reproducible 640 path in this repository is the `xquant` dynamic INT8 fallback. Public static calibration was attempted but remained too slow for a practical demo workflow.
+
+## FP16 model coverage
+
+The repository also carries a reproducible FP16 investigation path for YOLO11n `320x320` and `640x640`.
+
+Generate the current repo-managed FP16 models:
+
+```bash
+./scripts/fetch_or_build_fp16_models.sh
+```
+
+Model families:
+
+- `models/generated/fp16/yolov11n_<size>x<size>.fp16.onnx`
+  - true FP16 I/O
+  - dtype-validated
+  - currently not recommended on the tested public board runtimes because they crashed or corrupted during execution
+- `models/generated/fp16/yolov11n_<size>x<size>.fp16_iop32.onnx`
+  - internal FP16 weights with FP32 I/O
+  - dtype-validated
+  - this is the only practical board-side FP16 test chain currently exercised by the repo
+
+Run the reproducible FP16 matrix helper:
+
+```bash
+./scripts/bench_fp16_matrix.sh
+```
+
+Notes:
+
+- the helper defaults to `FP16_MODEL_VARIANT=keep_io`
+- use `FP16_MODEL_VARIANT=full` only for explicit runtime research, not as a recommended board path
+
+Current honest result summary:
+
+- public official/vendor YOLO11n FP16 ONNX artifacts were not found for `320` or `640`
+- Ultralytics `half=True` export on CPU was tested and rejected because it still produced FP32 ONNX
+- `keep_io` FP16 `640x640` works on `rt201` and `rt202b1`
+- `keep_io` FP16 `320x320` fails on all three validated public runtime lines
+- `keep_io` FP16 also fails on `rt123` for `640x640`
+- full-I/O FP16 models are dtype-correct, but they are not a supported board path on the tested public vendor lines
+
+See `docs/RESULTS.md` for the measured FP16 tables and exact failure notes.
 
 ## Optional custom export and quantization
 

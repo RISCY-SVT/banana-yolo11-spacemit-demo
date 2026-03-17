@@ -181,3 +181,95 @@ This file is updated after board validation.
   - Official vendor 640x640 INT8 YOLO11n model was not found in the pinned public archive.
   - Public xquant static calibration for 640x640 was attempted, but the tool still entered a `Runtime Calibration(BlockWise) ... /50` path despite a smaller requested calibration budget.
   - For this repository, the practical 640x640 fallback is `xquant` dynamic INT8.
+
+## FP16 matrix
+
+- Scope:
+  - model family: YOLO11n ONNX
+  - sizes: `320x320`, `640x640`
+  - runtimes tested: `rt123`, `rt201`, `rt202b1`
+- Public vendor FP16 artifacts:
+  - no public official/vendor YOLO11n FP16 ONNX for `320` or `640` was found in the pinned public sources used by this repo
+- Final repo-managed FP16 chain:
+  - source float32 baselines:
+    - vendor `320x320` float ONNX
+    - repo-generated `640x640` float ONNX
+  - deterministic conversion helper:
+    - `./scripts/fetch_or_build_fp16_models.sh`
+  - validated model families:
+    - true FP16 I/O: `*.fp16.onnx`
+    - internal FP16 with FP32 I/O: `*.fp16_iop32.onnx`
+  - the benchmark/result matrix below uses the `keep_io` models because the true FP16 I/O models were not runnable on the tested board runtime lines
+- Ultralytics `half=True` note:
+  - CPU export with `half=True` was tested and rejected because the produced ONNX remained FP32
+
+### FP16 model provenance
+
+| model | classification | input dtype | output dtype | sha256 | note |
+| --- | --- | --- | --- | --- | --- |
+| `yolov11n_320x320.fp16.onnx` | true FP16 I/O | `FLOAT16` | `FLOAT16` | `ebcbf994e3fea1ca6dfc9be1a3b7c18ec760b078f71e929c192a0d48c671e411` | dtype-correct, but not runnable on the tested public board runtimes |
+| `yolov11n_640x640.fp16.onnx` | true FP16 I/O | `FLOAT16` | `FLOAT16` | `ec7a8b5db9b4b022f98ea3ce7e887119a996637ba07be839b51b4970c2df61fd` | dtype-correct, but not runnable on the tested public board runtimes |
+| `yolov11n_320x320.fp16_iop32.onnx` | internal FP16 / FP32 I/O | `FLOAT` | `FLOAT` | `3291474d7a8e40bc0fabf6feb054942675f562dab0c04666bddd47662eb27b69` | final tested `320` FP16 path |
+| `yolov11n_640x640.fp16_iop32.onnx` | internal FP16 / FP32 I/O | `FLOAT` | `FLOAT` | `4742625978c4b5cc25282bf02890837fcea7762d5536fe55e583311ce9b14593` | final tested `640` FP16 path |
+
+Dtype validation was done by inspecting ONNX graph input/output types plus initializer dtype counts after conversion.
+The pass artifacts also include exported provenance and dtype-summary tables for later audit.
+
+### FP16 perf_test summary
+
+| runtime | model | status | mean ms | FPS | note |
+| --- | --- | --- | --- | --- | --- |
+| `rt123` | `fp16-320 keep_io` | fail |  |  | heap corruption (`free(): invalid next size`) |
+| `rt123` | `fp16-640 keep_io` | fail |  |  | heap corruption (`free(): corrupted unsorted chunks`) |
+| `rt201` | `fp16-320 keep_io` | fail |  |  | SpaceMIT EP reshape error |
+| `rt201` | `fp16-640 keep_io` | ok | `271.549` | `3.682577` | stable |
+| `rt202b1` | `fp16-320 keep_io` | fail |  |  | SpaceMIT EP compile/reshape error |
+| `rt202b1` | `fp16-640 keep_io` | ok | `293.624088` | `3.405715` | stable |
+
+### FP16 app forward-only summary
+
+| runtime | model | status | mean ms | std ms | FPS | note |
+| --- | --- | --- | --- | --- | --- | --- |
+| `rt123` | `fp16-320 keep_io` | fail |  |  |  | heap corruption |
+| `rt123` | `fp16-640 keep_io` | fail |  |  |  | heap corruption |
+| `rt201` | `fp16-320 keep_io` | fail |  |  |  | metadata/runtime error before usable inference |
+| `rt201` | `fp16-640 keep_io` | ok | `273.951889` | `0.548755` | `3.650276` | stable |
+| `rt202b1` | `fp16-320 keep_io` | fail |  |  |  | metadata/runtime error before usable inference |
+| `rt202b1` | `fp16-640 keep_io` | ok | `295.421328` | `0.616934` | `3.384996` | stable |
+
+### FP16 app full-pipeline summary
+
+| runtime | model | status | objects | preprocess ms | inference ms | postprocess ms | total ms | FPS | note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `rt123` | `fp16-320 keep_io` | fail |  |  |  |  |  |  | heap corruption |
+| `rt123` | `fp16-640 keep_io` | fail |  |  |  |  |  |  | heap corruption |
+| `rt201` | `fp16-320 keep_io` | fail |  |  |  |  |  |  | metadata/runtime error |
+| `rt201` | `fp16-640 keep_io` | ok | `13` | `28.385` | `431.284` | `17.391` | `497.471` | `2.010` | semantically reasonable canonical-photo output |
+| `rt202b1` | `fp16-320 keep_io` | fail |  |  |  |  |  |  | metadata/runtime error |
+| `rt202b1` | `fp16-640 keep_io` | ok | `13` | `28.189` | `437.294` | `17.130` | `501.964` | `1.992` | semantically reasonable canonical-photo output |
+
+### FP16 visual sanity and recommendations
+
+- `rt201 + fp16-640 keep_io`
+  - recommended only as an experimental FP16 coverage path, not as the default product visual path
+  - canonical photo output is semantically reasonable
+- `rt202b1 + fp16-640 keep_io`
+  - also usable as experimental FP16 coverage
+  - slightly slower than `rt201`
+- `rt123 + fp16-320/640 keep_io`
+  - not recommended
+  - observed heap corruption in both perf_test and app paths
+- `rt201/rt202b1 + fp16-320 keep_io`
+  - not recommended
+  - both fail during EP reshape/compile
+- true FP16 I/O models (`*.fp16.onnx`)
+  - dtype-correct, but not currently a supported board runtime path on these public vendor lines
+
+Practical conclusion:
+
+- this repository now has honest FP16 coverage for YOLO11n, but not a full “everything works” matrix
+- the only validated board-side FP16 execution path from this pass is:
+  - `keep_io` FP16
+  - `640x640`
+  - `rt201` or `rt202b1`
+- no tested public runtime line produced a usable `320x320` FP16 board result

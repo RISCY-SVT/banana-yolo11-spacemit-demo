@@ -228,7 +228,7 @@ std::string BuildUsage()
         << "  - The public tarball 2.0.1 stack remains the low-latency vendor320 benchmark path and the validated dynamic640 path.\n"
         << "  - A slower public rt201 visual workaround exists for vendor320 by disabling the float16 epilogue and keeping the /model.23 tail Slice/Add/Sub ops on CPU.\n"
         << "  - Custom Ultralytics/xquant models should normally use preprocess-mode=letterbox.\n"
-        << "  - Wrapper scripts auto-select the validated runtime by model and purpose; override with BANANA_DEMO_RUNTIME_TAG=rt123|rt201.\n"
+        << "  - Wrapper scripts auto-select the validated runtime by model and purpose; override with BANANA_DEMO_RUNTIME_TAG=rt123|rt201|rt202b1.\n"
         << "  - camera:auto prefers stable /dev/v4l/by-id or /dev/v4l/by-path capture nodes.\n"
         << '\n'
         << "Examples:\n"
