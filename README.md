@@ -252,6 +252,7 @@ Board-local camera default behavior:
 - `MAX_FRAMES=0`
 - live preview stays open until `q` / `ESC` or `Ctrl-C`
 - the app logs the resolved HighGUI backend, capture backend, and camera open method
+- the app also logs the resolved affinity policy, the main thread TID, and the cluster0/cluster1 CPU lists used for the run
 - the first raw frame is pushed to the preview immediately with a warmup banner while the first inference initializes
 - if GUI env/backend is not usable, the helper prints an explicit headless fallback message and the app emits periodic progress logs instead of appearing stuck
 - saving a still image is supported by pointing `SAVE_OUTPUT` at `.jpg`, `.jpeg`, `.png`, or `.bmp`
@@ -333,6 +334,16 @@ Backend sanity probe from Banana:
 python3 ./scripts/probe_opencv_ui.py
 ```
 
+Compact affinity trace capture:
+
+```bash
+./scripts/capture_camera_affinity.sh
+./scripts/capture_camera_affinity.sh fast
+```
+
+- The helper saves run logs, `mpstat`, `pidstat`, `ps -L`, and per-thread `Cpus_allowed_list` snapshots into one bundle.
+- Use it when you want a reproducible board-side view of camera thread placement without rebuilding the application.
+
 Board-local direct execution after deploy:
 
 ```bash
@@ -379,6 +390,16 @@ Benchmark runtime policy:
 - `bench_full_demo.sh` defaults to the validated visual stack (`rt123` for vendor320, `rt201` otherwise)
 - override either script with `BANANA_DEMO_RUNTIME_TAG=rt123|rt201` when you need a specific matrix entry
 - only the visual helpers auto-enable the slower vendor320 `rt201` workaround; forward-only benchmarking keeps the raw perf stack unless you export the workaround variables yourself
+
+Affinity policy notes:
+
+- The default product path still uses a single `cluster0` mask for the demo process.
+- This keeps ORT worker-thread inheritance deterministic and preserves the measured camera/live behavior already validated in this repo.
+- Two stricter split strategies were tested on the board:
+  - per-frame migration of the main thread between helper work on `cluster1` and inference on `cluster0`
+  - a dedicated synchronous inference worker on `cluster0` with UI/camera work kept on `cluster1`
+- Both variants were rejected for the product default because they did not improve measured live FPS on the current camera/display stack, and one variant introduced long-tail inference stalls.
+- Use `./scripts/capture_camera_affinity.sh` if you need to reproduce those measurements or check a different board image.
 
 ## CLI highlights
 
@@ -459,6 +480,7 @@ The binary supports:
   - the run scripts force `LD_LIBRARY_PATH` to the staged vendor runtime before launching the app
 - Reproducibility helper:
   - `./scripts/vendor320_runtime_matrix.sh` saves a compact `rt123` / `rt201 raw` / `rt201 fixed` comparison table plus annotated outputs
+  - `./scripts/capture_camera_affinity.sh` saves a compact camera thread-placement and CPU-utilization bundle for the default or fast-live profile
   - `./scripts/check_doxygen_coverage.sh` proves that every tracked source/script/CMake file carries an `@file` block
 
 ## Licensing and vendor binaries

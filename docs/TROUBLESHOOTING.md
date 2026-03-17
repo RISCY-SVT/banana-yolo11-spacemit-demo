@@ -176,6 +176,32 @@ BANANA_DEMO_RUNTIME_TAG=rt123 ./scripts/run_image_demo.sh /path/to/photo.jpg mod
   together with annotated outputs and a compact CSV/Markdown summary.
 - Use `./scripts/check_doxygen_coverage.sh` when you want to verify that all tracked source/script/CMake files still carry `@file`.
 
+## Camera thread placement / CPU affinity
+
+- The product default still keeps the demo process on `cluster0`.
+- That choice is intentional:
+  - it preserves the already-validated camera/live behavior
+  - it keeps ORT worker-thread inheritance deterministic
+  - the measured split experiments did not improve live FPS on the current board + USB camera + display stack
+- If you want a reproducible proof bundle for the current board image, run:
+
+```bash
+./scripts/capture_camera_affinity.sh
+./scripts/capture_camera_affinity.sh fast
+```
+
+- The helper saves:
+  - run logs
+  - `mpstat -P ALL 1`
+  - `pidstat -t -p <pid> 1`
+  - `ps -L` snapshots
+  - per-thread `Cpus_allowed_list` snapshots
+- The camera app logs now include:
+  - `affinity_policy`
+  - `main_tid`
+  - `cluster0=... cluster1=...`
+- If you see poor cluster0 balance again, capture a fresh bundle first instead of changing the runtime policy blindly.
+
 ## xquant is slow or pulls a huge dependency chain
 
 - Prefer reusing an existing working xquant environment:

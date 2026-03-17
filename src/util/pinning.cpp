@@ -12,9 +12,12 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <pthread.h>
 #include <sched.h>
 #include <set>
 #include <string>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 
@@ -254,7 +257,7 @@ bool PreparePinCpus(const std::string& pin_spec,
     return ParseCpuListString(list, pin_cpus, error);
 }
 
-bool ApplyProcessAffinity(const std::vector<int>& cpus, std::string& error)
+bool ApplyCurrentThreadAffinity(const std::vector<int>& cpus, std::string& error)
 {
     if (cpus.empty())
         return true;
@@ -280,7 +283,12 @@ bool ApplyProcessAffinity(const std::vector<int>& cpus, std::string& error)
     return true;
 }
 
-std::vector<int> CurrentAffinity()
+bool ApplyProcessAffinity(const std::vector<int>& cpus, std::string& error)
+{
+    return ApplyCurrentThreadAffinity(cpus, error);
+}
+
+std::vector<int> CurrentThreadAffinity()
 {
     std::vector<int> cpus;
     cpu_set_t set;
@@ -294,6 +302,34 @@ std::vector<int> CurrentAffinity()
             cpus.push_back(i);
     }
     return cpus;
+}
+
+std::vector<int> CurrentAffinity()
+{
+    return CurrentThreadAffinity();
+}
+
+long CurrentThreadId()
+{
+#ifdef SYS_gettid
+    return static_cast<long>(::syscall(SYS_gettid));
+#else
+    return -1;
+#endif
+}
+
+bool SetCurrentThreadName(const std::string& name, std::string& error)
+{
+    std::string truncated = name;
+    if (truncated.size() > 15)
+        truncated.resize(15);
+    const int rc = pthread_setname_np(pthread_self(), truncated.c_str());
+    if (rc != 0)
+    {
+        error = std::string("pthread_setname_np failed: ") + std::strerror(rc);
+        return false;
+    }
+    return true;
 }
 
 std::string FormatCpuList(const std::vector<int>& cpus)

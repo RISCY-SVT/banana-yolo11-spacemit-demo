@@ -29,6 +29,8 @@ This file is updated after board validation.
     - `camera_open_method`
     - `camera_backend`
     - `capture_ms`
+    - `affinity_policy`
+    - `main_tid`
     so live camera behavior is diagnosable without rebuilding.
   - In display mode, the first raw frame is shown immediately with a warmup banner while the first inference initializes.
   - Headless live inference is stable.
@@ -90,6 +92,13 @@ This file is updated after board validation.
     - after warmup, the default visual path is limited mostly by `dynamic640` inference cost plus about `50 ms` of camera capture/MJPG decode overhead
     - a low-risk latency tweak (`CAP_PROP_BUFFERSIZE=1`) remains applied
     - the new fast-live profile is the measured low-risk product answer for better responsiveness without abandoning the trusted visual path
+  - A focused affinity pass reproduced the earlier cluster0 underutilization report:
+    - all demo-side threads initially inherited the same `cluster0` mask
+    - GTK helper threads and camera-side work were therefore competing on the same cluster as ORT workers
+    - a dedicated split implementation was prototyped and verified with per-thread affinity dumps
+    - it did move helper work to `cluster1`, but it did not improve measured live FPS on the current camera/display stack
+    - the repo therefore keeps the simpler single-mask policy by default and exposes a regression helper instead of enabling an unhelpful split:
+      - `scripts/capture_camera_affinity.sh`
 
 - Forward-only benchmark
   - Vendor320 perf stack (`rt201`) `onnxruntime_perf_test`:

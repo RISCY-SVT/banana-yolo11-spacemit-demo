@@ -287,6 +287,12 @@ int Application::RunCameraMode()
         logger.Error(error);
         return 2;
     }
+    if (!SetCurrentThreadName("cam-main", error))
+        logger.Warn(error);
+
+    logger.Info("main_tid=" + std::to_string(CurrentThreadId()));
+    logger.Info("affinity_policy=single-mask cpus=" + FormatCpuList(CurrentAffinity()));
+    logger.Info("cluster0=" + FormatCpuList(cluster0) + " cluster1=" + FormatCpuList(cluster1));
 
     MediaSource source(options_);
     if (!source.Open(error))
@@ -295,7 +301,17 @@ int Application::RunCameraMode()
         return 2;
     }
 
+    // Build the detector while the owner thread is explicitly marked as
+    // inference-related so ORT-created worker threads are easier to identify in
+    // `ps -L` and `/proc/<pid>/task/*` traces.
+    if (!SetCurrentThreadName("infer-main", error))
+        logger.Warn(error);
+    logger.Info("affinity_stage=detector-build tid=" + std::to_string(CurrentThreadId()) +
+                " cpus=" + FormatCpuList(CurrentAffinity()));
     Yolo11Detector detector(options_);
+    if (!SetCurrentThreadName("cam-main", error))
+        logger.Warn(error);
+
     Renderer renderer;
     logger.Info("camera_source=" + source.Describe());
     logger.Info("camera_open_method=" + source.OpenMethod());
