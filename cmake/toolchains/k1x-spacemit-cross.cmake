@@ -45,5 +45,5 @@ set(ENV{PKG_CONFIG_SYSROOT_DIR} "${K1_SYSROOT_OVERLAY}")
 set(ENV{PKG_CONFIG_LIBDIR} "${K1_SYSROOT_OVERLAY}/usr/lib/riscv64-linux-gnu/pkgconfig:${K1_SYSROOT_OVERLAY}/lib/riscv64-linux-gnu/pkgconfig")
 set(ENV{PKG_CONFIG_PATH} "/data/opencv/install-k1x-gtk3/lib/pkgconfig:$ENV{PKG_CONFIG_LIBDIR}")
 
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../runtime/lib;$ORIGIN/../lib")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../runtime/lib;$ORIGIN/../../runtime/lib;$ORIGIN/../opencv/lib;$ORIGIN/../../opencv/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH OFF)
