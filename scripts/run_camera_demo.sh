@@ -93,6 +93,9 @@ if banana_demo_is_board_mode; then
   CAMERA_PIXFMT="${CAMERA_PIXFMT:-$(banana_demo_choose_camera_pixfmt "${CAMERA_REALPATH}" "${CAMERA_WIDTH}" "${CAMERA_HEIGHT}")}"
 
   mkdir -p "${REPO_DIR}/logs" "${REPO_DIR}/outputs"
+  if [[ -n "${SAVE_OUTPUT}" ]]; then
+    mkdir -p "$(dirname "${SAVE_OUTPUT}")"
+  fi
   banana_demo_export_runtime_env "${REPO_DIR}" "${RUNTIME_TAG}"
   banana_demo_apply_vendor320_rt201_visual_fix "${MODEL_PATH}" "${RUNTIME_TAG}" "visual"
   banana_demo_prepare_display_env "${DISPLAY_FLAG}"
@@ -165,7 +168,12 @@ DISPLAY_FLAG="${DISPLAY_FLAG:-0}"
 HEADLESS_FLAG="${HEADLESS_FLAG:-auto}"
 CONFIDENCE="${CONFIDENCE:-0.25}"
 BANANA_DEMO_CAMERA_PROFILE="${BANANA_DEMO_CAMERA_PROFILE:-default-visual}"
-SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-}"
+## Host-wrapper recording/still path passed through to board-local mode.
+##
+## `SAVE_OUTPUT` is the documented public knob for both board-local and host
+## wrapper use. `SAVE_OUTPUT_REMOTE` remains as a lower-level escape hatch when
+## a caller wants the board path to differ from a local orchestration variable.
+SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-${SAVE_OUTPUT:-}}"
 LOG_FILE_REMOTE="${LOG_FILE_REMOTE:-${BOARD_DIR}/logs/camera_${INPUT_SIZE}.log}"
 CAMERA_WIDTH="${CAMERA_WIDTH:-1280}"
 CAMERA_HEIGHT="${CAMERA_HEIGHT:-720}"

@@ -101,8 +101,21 @@ INPUT_SIZE="${3:-${INPUT_SIZE:-$(banana_demo_default_visual_input_size)}}"
 CONFIDENCE="${4:-${CONFIDENCE:-0.25}}"
 DISPLAY_FLAG="${DISPLAY_FLAG:-0}"
 HEADLESS_FLAG="${HEADLESS_FLAG:-auto}"
-SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE:-${BOARD_DIR}/outputs/image_${INPUT_SIZE}.jpg}"
-LOG_FILE_REMOTE="${LOG_FILE_REMOTE:-${BOARD_DIR}/logs/image_${INPUT_SIZE}.log}"
+## Host-wrapper output handling for local orchestration.
+##
+## The board-local script always writes to a board path. In host-wrapper mode,
+## the public positional `save_output` argument is treated as a local artifact
+## path and copied back after a successful board run. `SAVE_OUTPUT_REMOTE`
+## remains available when callers need to force the exact board path.
+SAVE_OUTPUT_LOCAL="${7:-${SAVE_OUTPUT:-}}"
+if [[ -n "${SAVE_OUTPUT_REMOTE:-}" ]]; then
+  SAVE_OUTPUT_REMOTE="${SAVE_OUTPUT_REMOTE}"
+elif [[ -n "${SAVE_OUTPUT_LOCAL}" ]]; then
+  SAVE_OUTPUT_REMOTE="${BOARD_DIR}/outputs/$(basename "${SAVE_OUTPUT_LOCAL}")"
+else
+  SAVE_OUTPUT_REMOTE="${BOARD_DIR}/outputs/image_${INPUT_SIZE}.jpg"
+fi
+LOG_FILE_REMOTE="${8:-${LOG_FILE_REMOTE:-${BOARD_DIR}/logs/image_${INPUT_SIZE}.log}}"
 
 REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"
 REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
@@ -121,3 +134,7 @@ ssh "${TARGET}" "cd '${BOARD_DIR}' && \
     '${HEADLESS_FLAG}' \
     '${SAVE_OUTPUT_REMOTE}' \
     '${LOG_FILE_REMOTE}'"
+if [[ -n "${SAVE_OUTPUT_LOCAL}" ]]; then
+  mkdir -p "$(dirname "${SAVE_OUTPUT_LOCAL}")"
+  scp "${TARGET}:${SAVE_OUTPUT_REMOTE}" "${SAVE_OUTPUT_LOCAL}"
+fi

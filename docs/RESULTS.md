@@ -2,6 +2,77 @@
 
 This file is updated after board validation.
 
+## Day 1 production regression, 2026-06-28
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-06-28_16-43-04/
+```
+
+Production policy confirmed:
+
+- Primary production visual branch: generated `dynamic640` INT8 on `rt201`.
+- Default image visual path: generated `dynamic640` INT8 on `rt201`.
+- Default normal camera path: generated `dynamic640` INT8 on `rt201`.
+- Fast-live camera path: official vendor320 INT8 on `rt123`, `320x320` letterbox.
+- Vendor320 trusted visual path: official vendor320 INT8 on `rt123`.
+- Vendor320 low-latency benchmark path: raw `rt201`, perf-only.
+- FP16: experimental; `keep_io` FP16 `640x640` works on `rt201` and `rt202b1`.
+
+### Day 1 image regression
+
+| Path | Runtime | Model/profile | Status | Objects | Preprocess ms | Inference ms | Postprocess ms | Total ms | FPS | Semantic verdict |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Default production visual | `rt201` | generated `dynamic640` INT8 | pass | 14 | 27.932 | 820.408 | 17.365 | 887.258 | 1.127 | reasonable |
+| Vendor320 trusted visual | `rt123` | official vendor320 INT8 | pass | 8 | 10.326 | 63.708 | 4.411 | 97.765 | 10.229 | reasonable |
+| Vendor320 `rt201` raw perf | `rt201` | official vendor320 INT8 | pass | n/a | n/a | 25.135 forward-only | n/a | n/a | 39.786 forward-only | perf-only, not visual default |
+| Vendor320 `rt201` workaround | `rt201` | SHA256-guarded visual workaround | pass | 9 | 9.862 | 184.588 | 4.456 | 219.678 | 4.552 | reasonable, slower than `rt123` |
+| FP16 keep_io 640 | `rt201` | experimental FP16 | pass | 13 | 29.619 | 406.901 | 17.301 | 474.652 | 2.107 | reasonable |
+| FP16 keep_io 640 | `rt202b1` | experimental FP16 | pass | 13 | 27.777 | 435.406 | 17.336 | 499.653 | 2.001 | reasonable |
+| FP16 keep_io 320 | `rt201`/`rt202b1` | experimental FP16 | expected fail | n/a | n/a | n/a | n/a | n/a | n/a | remains unsupported |
+
+### Day 1 camera regression
+
+| Case | Runtime | Display/headless | Camera mode | Frame | Total ms | FPS | Status |
+| --- | --- | --- | --- | ---: | ---: | ---: | --- |
+| Normal camera default | `rt201` | display off, headless on | `/dev/v4l/by-id/... -> /dev/video20`, MJPG, `1280x720` | 60 | 268.892 | 3.719 | pass |
+| Fast-live camera | `rt123` | display on, headless off | `/dev/v4l/by-id/... -> /dev/video20`, `640x480` | 80 | 68.883 | 14.517 | pass |
+| Forced headless normal | `rt201` | display off, headless on | same USB camera | 20 | 250.104 | 3.998 | pass |
+| Forced headless fast-live | `rt123` | display off, headless on | same USB camera | 50 | 67.980 | 14.710 | pass |
+| Normal still save | `rt201` | headless still | JPEG `1280x720` | 1 | 863.969 | 1.157 | pass |
+| Fast-live still save | `rt123` | headless still | JPEG `640x480` | 1 | 86.837 | 11.516 | pass |
+
+Notes:
+
+- Camera auto-selection still prefers the stable `/dev/v4l/by-id` path.
+- No AVI output is created unless recording is explicitly requested.
+- Host-wrapper `SAVE_OUTPUT`/positional image and camera still paths were fixed during Day 1 so requested local artifacts are created predictably.
+
+### Day 1 performance regression
+
+| Case | Runtime | Model/profile | perf_test mean ms | perf_test FPS | App mode | App mean ms | App FPS | Notes |
+| --- | --- | --- | ---: | ---: | --- | ---: | ---: | --- |
+| Vendor320 low-latency perf | `rt201` | official vendor320 INT8 | 24.6879 | 40.4957 | forward | 25.134561 | 39.785855 | perf-only branch |
+| Vendor320 trusted visual control | `rt123` | official vendor320 INT8 | 48.7262 | 20.5072 | forward | 49.203386 | 20.323804 | visual branch |
+| Primary dynamic640 visual | `rt201` | generated dynamic640 INT8 | 190.245 | 5.25614 | forward | 192.232816 | 5.202025 | primary production visual branch |
+| Primary dynamic640 visual | `rt201` | generated dynamic640 INT8 | n/a | n/a | full | 232.189709 | 4.306823 | full image pipeline |
+| FP16 keep_io 640 | `rt201` | experimental FP16 | 272.964 | 3.663487 | forward | 273.233840 | 3.659869 | experimental |
+| FP16 keep_io 640 | `rt202b1` | experimental FP16 | 292.900412 | 3.414130 | forward | 294.169391 | 3.399402 | experimental |
+
+### Day 1 YOLO26n feasibility gate
+
+Result: not adopted; P2 follow-up only.
+
+- Public checkpoint was reachable from `https://huggingface.co/Ultralytics/YOLO26/resolve/main/yolo26n.pt`.
+- Checkpoint SHA256: `9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef`.
+- ONNX 640 export succeeded with Ultralytics `8.3.233`; output contract is traditional YOLO `[1,84,8400]`, not E2E `[1,300,6]`.
+- Direct dynamic `xquant` produced an INT8 ONNX artifact.
+- Board rt201 app smoke ran both float ONNX and dynamic INT8 ONNX, but both produced a giant false `refrigerator` box on the canonical photo.
+- Dynamic INT8 timing was about `1086.868 ms` inference / `1147.946 ms` total for one image; float ONNX timing was about `544.356 ms` inference / `600.287 ms` total.
+
+Decision: YOLO26n is a candidate for separate post-release decode/contract and quantization work, not a Day 1 production branch.
+
 - Image demo
   - Required image: `/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg`
   - Vendor INT8 320x320 is now validated as a trustworthy visual path on runtime `rt123` (`spacemit-ort.riscv64.1.2.3`) with letterbox preprocessing.

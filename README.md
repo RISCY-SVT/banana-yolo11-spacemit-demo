@@ -13,6 +13,19 @@ Standalone C++ demo repository for Banana Pi BPI-F3 / SpacemiT K1X using the ven
 
 The repository is designed to be usable by another engineer from scratch once the canonical K1X toolchain and sysroot overlay are already installed.
 
+## Production policy for 2026-07-02
+
+- Primary production visual branch: generated `dynamic640` INT8 on `rt201`.
+- Default image visual path: generated `dynamic640` INT8 on `rt201`.
+- Default normal camera path: generated `dynamic640` INT8 on `rt201`.
+- Fast-live camera path: official vendor320 INT8 on `rt123`, `320x320` letterbox, with the camera requested at `640x480`.
+- Vendor320 trusted visual path: official vendor320 INT8 on `rt123`.
+- Vendor320 low-latency benchmark path: raw `rt201`; this is perf-only, not the default visual path.
+- Vendor320 `rt201` visual workaround: available and SHA256-guarded, but slower than the `rt123` visual path.
+- FP16: experimental coverage only; the usable board-side path is `keep_io` FP16 `640x640` on `rt201`/`rt202b1`.
+
+The Day 1 production regression confirmed this policy after the Day 0 loader recovery fix.
+
 ## Architecture
 
 - Host build: Ubuntu 24.04 x86_64 cross-build container
@@ -20,13 +33,14 @@ The repository is designed to be usable by another engineer from scratch once th
 - Runtime matrix:
   - vendor320 visual path: `rt123` = `spacemit-ort.riscv64.1.2.3`
   - vendor320 perf path: `rt201` = `spacemit-ort.riscv64.2.0.1`
-  - dynamic640 path: `rt201` = `spacemit-ort.riscv64.2.0.1`
+  - primary production dynamic640 path: `rt201` = `spacemit-ort.riscv64.2.0.1`
   - fast-live camera path: trusted vendor320 visual stack on `rt123`
 - Benchmark model path:
   - official vendor YOLO11n INT8 320x320 ONNX
-- Default visual demo path:
+- Primary/default visual demo path:
   - Ultralytics ONNX export
   - xquant-based INT8 conversion for custom sizes such as 640x640
+  - generated model: `models/generated/xquant_640/yolov11n_640x640.dynamic_int8.onnx`
 
 The application supports:
 

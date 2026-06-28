@@ -22,6 +22,9 @@ Environment overrides:
   BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1
   - auto/visual uses rt123 for vendor320 correctness and rt201 otherwise
   BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
+  BENCH_WARMUP=<n>   # default: 10
+  BENCH_RUNS=<n>     # default: 100
+  BENCH_REPEATS=<n>  # default: 5
 EOF
 }
 
@@ -36,6 +39,9 @@ if banana_demo_is_board_mode; then
   INPUT_SIZE="${2:-${INPUT_SIZE:-320}}"
   IMAGE_PATH="${3:-${IMAGE_PATH:-$(banana_demo_resolve_default_image "${REPO_DIR}")}}"
   LOG_FILE="${LOG_FILE:-${REPO_DIR}/logs/bench_full_${INPUT_SIZE}.log}"
+  BENCH_WARMUP="${BENCH_WARMUP:-10}"
+  BENCH_RUNS="${BENCH_RUNS:-100}"
+  BENCH_REPEATS="${BENCH_REPEATS:-5}"
   RUNTIME_TAG="$(banana_demo_resolve_runtime_tag "${MODEL_PATH}" "visual")"
   APP_BIN="$(banana_demo_binary_path "${REPO_DIR}" "${RUNTIME_TAG}")"
   mkdir -p "${REPO_DIR}/logs"
@@ -43,6 +49,9 @@ if banana_demo_is_board_mode; then
   banana_demo_apply_vendor320_rt201_visual_fix "${MODEL_PATH}" "${RUNTIME_TAG}" "visual"
   banana_demo_unset_parallel_env
   echo "runtime_tag=${RUNTIME_TAG}"
+  echo "bench_warmup=${BENCH_WARMUP}"
+  echo "bench_runs=${BENCH_RUNS}"
+  echo "bench_repeats=${BENCH_REPEATS}"
   exec taskset -c 0,1,2,3 "${APP_BIN}" \
     --model "${MODEL_PATH}" \
     --labels "${REPO_DIR}/assets/coco80.txt" \
@@ -53,9 +62,9 @@ if banana_demo_is_board_mode; then
     --pin cluster0 \
     --benchmark-only 1 \
     --benchmark-mode full \
-    --warmup 10 \
-    --runs 100 \
-    --repeats 5 \
+    --warmup "${BENCH_WARMUP}" \
+    --runs "${BENCH_RUNS}" \
+    --repeats "${BENCH_REPEATS}" \
     --display 0 \
     --headless 1 \
     --quiet 1 \
@@ -72,4 +81,4 @@ INPUT_SIZE="${2:-320}"
 IMAGE_PATH="${3:-/home/svt/ncnn-k1x-int8-smoke/models/photo_2024-10-11_10-04-04.jpg}"
 REMOTE_IMAGE_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${IMAGE_PATH}" inputs)"
 REMOTE_MODEL_PATH="$(banana_demo_stage_remote_file "${TARGET}" "${BOARD_DIR}" "${MODEL_PATH}" inputs)"
-ssh "${TARGET}" "cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX='${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}' LOG_FILE='${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log' ./scripts/bench_full_demo.sh '${REMOTE_MODEL_PATH}' '${INPUT_SIZE}' '${REMOTE_IMAGE_PATH}'"
+ssh "${TARGET}" "cd '${BOARD_DIR}' && BANANA_DEMO_EXEC_MODE=board BANANA_DEMO_RUNTIME_TAG='${BANANA_DEMO_RUNTIME_TAG:-auto}' BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX='${BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX:-auto}' BENCH_WARMUP='${BENCH_WARMUP:-10}' BENCH_RUNS='${BENCH_RUNS:-100}' BENCH_REPEATS='${BENCH_REPEATS:-5}' LOG_FILE='${BOARD_DIR}/logs/bench_full_${INPUT_SIZE}.log' ./scripts/bench_full_demo.sh '${REMOTE_MODEL_PATH}' '${INPUT_SIZE}' '${REMOTE_IMAGE_PATH}'"
