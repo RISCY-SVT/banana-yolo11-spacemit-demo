@@ -143,3 +143,23 @@ but current repo decode/quantized outputs are not semantically acceptable.
 
 Stable `spacemit-ort 2.0.2` remains non-adopted after Day 2 and should not be
 promoted without a separate runtime-side fix or vendor guidance.
+
+## Day 3 Handoff Artifacts
+
+Release-candidate operator artifacts live under:
+
+```text
+release/
+```
+
+Use:
+
+- `release/DEMO_COMMANDS.md` for supported demo commands
+- `release/RUNTIME_MANIFEST.md` for runtime provenance
+- `release/MODEL_MANIFEST.md` for model provenance
+- `release/KNOWN_LIMITATIONS.md` for accepted non-production paths
+- `release/HANDOFF_NOTES.md` for mirror/log/rollback notes
+
+Day 3 also verifies that the public `rt202b1` archive URL is encoded as
+`%2Bbeta1` in `third_party_manifest/runtime.lock`; this avoids a 404 on fresh
+clone runtime fetch without changing runtime selection.

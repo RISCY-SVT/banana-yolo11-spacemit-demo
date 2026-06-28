@@ -84,3 +84,31 @@ Run directory:
 
 Stable `rt202` did not become a camera candidate because it failed the image and
 performance gates first.
+
+## Day 3 Packaging / Mirror / Handoff Gate
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-06-28_18-57-22/
+```
+
+| Area | Case | Required result | Day 3 result |
+| --- | --- | --- | --- |
+| Continuity | Day 0, Day 1, Day 2 commits present | pass | pass |
+| GitHub continuity | local Day 2 baseline equals `origin/master` at start | pass | pass |
+| Scope | production policy unchanged | pass | pass |
+| Fresh clone | GitHub clone at Day 2 baseline | clone succeeds | pass |
+| Fresh clone | `fetch_vendor_runtime.sh` | all pinned runtime URLs fetch | initially failed on raw `+beta1` URL; fixed by URL-encoding `%2Bbeta1` |
+| Build | current repository | pass | pass |
+| Deploy | current repository | pass | pass |
+| Loader | `app/bin/banana_yolo11_demo`, `bin/banana_yolo11_demo_rt201`, `bin/banana_yolo11_demo_rt123` | repo-local runtime/OpenCV resolution | pass |
+| Image | default generated dynamic640 INT8 on `rt201` | semantically reasonable | pass |
+| Camera | normal camera default | runs without crash, stable camera path | pass |
+| Camera | fast-live | runs without crash, stable camera path | pass |
+| Camera | forced headless normal | progress logs, no hang | pass |
+| Performance | forward/full smoke | fresh Day 3 logs captured | pass |
+| Docs | Doxygen coverage/generation | `missing_at_file=0`, warnings checked | pass |
+| Release package | `release/` manifests | generated | pass |
+
+Day 3 did not change the frozen runtime/model production policy.

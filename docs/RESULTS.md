@@ -2,6 +2,51 @@
 
 This file is updated after board validation.
 
+## Day 3 release packaging and handoff readiness, 2026-06-28
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-06-28_18-57-22/
+```
+
+Day 3 preserved the Day 2 production policy:
+
+- Primary production visual branch: generated `dynamic640` INT8 on `rt201`.
+- Default normal camera branch: generated `dynamic640` INT8 on `rt201`.
+- Fast-live branch: official vendor320 INT8 on `rt123`, `320x320` letterbox.
+- Vendor320 raw `rt201` remains benchmark/perf-only.
+- FP16 remains experimental; usable coverage remains keep_io 640 on
+  `rt201`/`rt202b1`.
+- Stable `rt202` remains evaluated but not adopted.
+- YOLO26n remains P2.
+
+### Day 3 packaging findings
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| Day 0 / Day 1 / Day 2 continuity | pass | Required production-week commits are present. |
+| `origin/master` baseline | pass | Local Day 2 baseline matched `origin/master` at Day 3 start. |
+| Frozen scope consistency | pass | README and production docs agree on the policy above. |
+| Current repo build/deploy | pass | `./scripts/build_cross.sh` and `./scripts/deploy_to_banana.sh`. |
+| Loader proof | pass | Production binaries resolve repo-local ONNX Runtime, SpaceMIT EP, and staged OpenCV. |
+| Release package | pass | Operator-facing artifacts generated under `release/`. |
+| Fresh clone runtime fetch | fixed | Raw `+beta1` URL for `rt202b1` produced 404; lock file now uses `%2Bbeta1`. |
+
+### Day 3 smoke results
+
+| Case | Runtime | Result | Key timing / note |
+| --- | --- | --- | --- |
+| Default image visual | `rt201` | pass | 14 objects, total `843.955 ms`, `1.185 FPS` full image run. |
+| Normal camera | `rt201` | pass | Stable `/dev/v4l/by-id/... -> /dev/video20`, MJPG `1280x720`, frame 30 total `242.878 ms`, effective `2.365 FPS`. |
+| Fast-live camera | `rt123` | pass | Stable camera path, YUYV `640x480`, frame 60 total `64.167 ms`, effective `10.571 FPS`. |
+| Forced headless normal | `rt201` | pass | Explicit headless fallback and progress logs, frame 30 total `249.434 ms`. |
+| Forward benchmark smoke | `rt201` vendor320 perf | pass | app forward `23.934424 ms`, `41.780826 FPS`. |
+| Full benchmark smoke | `rt123` vendor320 visual | pass | app full `56.165549 ms`, `17.804509 FPS`. |
+
+Day 3 generated annotated examples in the run directory under
+`output_examples/day3/`.
+
 ## Day 2 RC soak and stable rt202 evaluation, 2026-06-28
 
 Run directory:

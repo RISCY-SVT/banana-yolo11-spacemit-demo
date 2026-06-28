@@ -42,3 +42,19 @@ Day 2 RC soak/regression keeps the same production policy. Stable public
 `spacemit-ort.riscv64.2.0.2` is pinned for reproducible evaluation as `rt202`,
 but it does not replace `rt201` or `rt202b1` because it aborted on dynamic640,
 FP16 640, and vendor320 checks, including after a clean board reboot.
+
+## Day 3 Handoff Package
+
+Day 3 adds operator-facing release artifacts under:
+
+```text
+release/
+```
+
+The release package does not change the frozen production scope. It records the
+supported demo commands, runtime/model manifests, build assumptions, known
+limitations, and handoff notes for the 2026-07-02 release candidate.
+
+The `rt202b1` archive URL in `third_party_manifest/runtime.lock` uses URL
+encoding for the `+beta1` suffix. This is a reproducibility fix for fresh clone
+fetches and does not change the runtime policy.

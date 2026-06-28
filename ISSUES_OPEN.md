@@ -17,3 +17,4 @@ None.
 | Latest-frame/drop-old-frames camera pipeline | deferred | Treat as post-release R&D. |
 | Official public 640 INT8 artifact | deferred | Search after release; do not block current scope. |
 | Public 320 FP16 chain | deferred | Investigate only after release. |
+| Drive mirror remote snapshot | handoff hygiene | Run or verify external Drive mirror sync before final management handoff if not already completed. |

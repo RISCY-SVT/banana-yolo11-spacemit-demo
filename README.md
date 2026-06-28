@@ -136,6 +136,10 @@ is kept fetchable and selectable for reproducibility, but it is not an adopted
 runtime path because it aborted on the current dynamic640, FP16 640, and
 vendor320 test cases even after a board reboot with an idle `/dev/tcm`.
 
+Day 3 adds an operator handoff package under `release/`. Start with
+`release/DEMO_COMMANDS.md` for supported commands and
+`release/PRODUCTION_READINESS_REPORT.md` for the release-candidate scope.
+
 ## Models
 
 Fetch vendor-provided YOLO11n 320x320 models:
