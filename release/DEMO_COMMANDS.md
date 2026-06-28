@@ -2,6 +2,9 @@
 
 Run commands from the repository root on the Banana board unless noted.
 
+For expected FPS/latency classes and caveats, read `release/FPS_SUMMARY.md`
+before comparing demo output to benchmark numbers.
+
 ## Default Image Demo
 
 ```bash

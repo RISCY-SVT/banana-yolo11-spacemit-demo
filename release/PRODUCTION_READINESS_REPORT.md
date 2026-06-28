@@ -28,6 +28,14 @@ history.
 | Stable `rt202` | `2.0.2` | current paths | evaluated, not adopted |
 | YOLO26n | n/a | n/a | P2 only |
 
+## FPS / Latency Summary
+
+The authoritative consolidated FPS/latency table is in `release/FPS_SUMMARY.md`
+for release-package readers and mirrored in `docs/FPS_SUMMARY.md` in the repo
+documentation tree. The summary separates `perf_test forward`, app
+forward-only, full-image, and camera loop metrics so they are not compared as a
+single leaderboard.
+
 ## Day 3 Gate
 
 Day 3 is a release-candidate packaging and handoff-readiness gate. It does not

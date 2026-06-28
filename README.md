@@ -31,6 +31,9 @@ The repository is designed to be usable by another engineer from scratch once th
 The Day 2 release-candidate regression confirmed this policy after the Day 0
 loader recovery fix and Day 1 full regression.
 
+For the consolidated management-facing FPS/latency table, including metric-class
+caveats and rejected/P2 paths, see `docs/FPS_SUMMARY.md`.
+
 ## Architecture
 
 - Host build: Ubuntu 24.04 x86_64 cross-build container

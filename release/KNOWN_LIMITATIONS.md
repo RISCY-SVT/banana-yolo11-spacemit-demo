@@ -1,5 +1,10 @@
 # Known Limitations
 
+See `release/FPS_SUMMARY.md` for the consolidated FPS/latency matrix and the
+metric-class caveats. Camera effective FPS, per-frame instantaneous FPS,
+app full-image FPS, app forward-only FPS, and vendor `perf_test` FPS are
+different measurements.
+
 ## Stable rt202
 
 Stable `spacemit-ort.riscv64.2.0.2` is staged and selectable as `rt202`, but it

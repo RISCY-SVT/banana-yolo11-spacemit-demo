@@ -22,6 +22,11 @@ bf3-ncnn/data/banana-yolo11-spacemit-demo
 Drive sync should preserve repo docs, release artifacts, and the timestamped log
 run directories without exporting private local agent state.
 
+Container-side acceptance does not prove the Google Drive mirror by itself. The
+host operator must run the host-side rclone sync/check and record the result.
+The current expected status before that host action is
+`pending-host-verification`.
+
 ## Rollback
 
 If a Day 3 handoff commit causes an issue, roll back to the Day 2 baseline:

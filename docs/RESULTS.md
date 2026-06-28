@@ -2,6 +2,11 @@
 
 This file is updated after board validation.
 
+For the final consolidated FPS/latency view across production, experimental,
+and rejected/P2 variants, see `docs/FPS_SUMMARY.md`. That file is the
+authoritative summary table; this file preserves the underlying Day-by-Day
+result history.
+
 ## Day 3 release packaging and handoff readiness, 2026-06-28
 
 Run directory:
