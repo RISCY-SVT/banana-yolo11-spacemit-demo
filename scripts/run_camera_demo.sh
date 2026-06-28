@@ -42,7 +42,7 @@ Vendor 320x320 note:
   - low-latency benchmarking can still force raw rt201 behavior via BANANA_DEMO_RUNTIME_TAG=rt201 and BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0
 
 Environment overrides:
-  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1|rt202
   BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
   CAMERA_PIXFMT=auto|mjpg|yuyv
   CAMERA_WIDTH / CAMERA_HEIGHT / CAMERA_FPS

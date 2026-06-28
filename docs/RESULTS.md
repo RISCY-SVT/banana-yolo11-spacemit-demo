@@ -2,6 +2,101 @@
 
 This file is updated after board validation.
 
+## Day 2 RC soak and stable rt202 evaluation, 2026-06-28
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-06-28_17-50-14/
+```
+
+Production policy confirmed:
+
+- Primary production visual branch: generated `dynamic640` INT8 on `rt201`.
+- Default image visual path: generated `dynamic640` INT8 on `rt201`.
+- Default normal camera path: generated `dynamic640` INT8 on `rt201`.
+- Fast-live camera path: official vendor320 INT8 on `rt123`, `320x320` letterbox.
+- Vendor320 trusted visual path: official vendor320 INT8 on `rt123`.
+- Vendor320 low-latency benchmark path: raw `rt201`, perf-only.
+- FP16: experimental; `keep_io` FP16 `640x640` remains usable on `rt201` and `rt202b1`.
+- Stable `rt202` = `spacemit-ort.riscv64.2.0.2` is fetchable/selectable for
+  reproducible testing, but it is **not adopted** for production or FP16
+  replacement after Day 2.
+
+### Day 2 stable rt202 decision
+
+| Question | Decision | Evidence |
+| --- | --- | --- |
+| Can stable `rt202` replace `rt202b1` in active helper/docs? | No | `rt202b1` passes FP16 keep_io 640; stable `rt202` aborts on the same model. |
+| Can stable `rt202` replace `rt201` for dynamic640 production? | No | Dynamic640 image and forward/full runs abort on stable `rt202`; `rt201` passes. |
+| Can stable `rt202` improve FP16 640 experimental path? | No | Stable `rt202` aborts; `rt201` and `rt202b1` pass. |
+| Can stable `rt202` fix vendor320 2.0.x issues? | No | Vendor320 stable `rt202` aborts before a usable semantic verdict. |
+| Should beta/RC `rt202b1` be removed from active repo paths? | No | It remains the only validated 2.0.2-line experimental FP16 640 path. |
+
+Stable `rt202` was retested after a board reboot. Post-reboot `/dev/tcm` had no
+`fuser`/`lsof` users, but stable `rt202` still aborted on dynamic640, FP16 640,
+and vendor320 checks.
+
+### Day 2 image regression
+
+| Path | Runtime | Model/profile | Status | Objects | Preprocess ms | Inference ms | Postprocess ms | Total ms | FPS | Semantic verdict |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Default production visual | `rt201` | generated `dynamic640` INT8 | pass | 14 | 28.051 | 791.126 | 17.337 | 858.361 | 1.165 | reasonable |
+| Vendor320 trusted visual | `rt123` | official vendor320 INT8 | pass | 8 | 11.615 | 151.690 | 10.349 | 193.223 | 5.175 | reasonable; first run includes startup overhead |
+| Vendor320 raw perf sanity | `rt201` | official vendor320 INT8, workaround off | pass as raw/perf | 0 | 10.336 | 141.224 | 4.296 | 166.567 | 6.004 | not a visual default |
+| Vendor320 `rt201` workaround | `rt201` | SHA256-guarded visual workaround | pass | 9 | 10.948 | 142.432 | 4.492 | 178.049 | 5.616 | reasonable, non-default |
+| Fast-live still path | `rt123` | official vendor320 INT8 | pass | 8 | 10.534 | 63.845 | 4.400 | 98.798 | 10.122 | reasonable |
+| FP16 keep_io 640 | `rt201` | experimental FP16 | pass | 13 | 28.166 | 420.125 | 17.430 | 485.721 | 2.059 | reasonable |
+| FP16 keep_io 640 | `rt202b1` | experimental FP16 | pass | 13 | 27.989 | 438.632 | 17.298 | 503.659 | 1.985 | reasonable |
+| FP16 keep_io 320 | `rt201` | experimental FP16 | expected fail | n/a | n/a | n/a | n/a | n/a | n/a | EP reshape failure |
+| Dynamic640 candidate | `rt202` stable | generated `dynamic640` INT8 | fail | n/a | n/a | n/a | n/a | n/a | n/a | aborts with `std::runtime_error` |
+| FP16 keep_io 640 candidate | `rt202` stable | experimental FP16 | fail | n/a | n/a | n/a | n/a | n/a | n/a | aborts with `std::runtime_error` |
+| Vendor320 candidate | `rt202` stable | official vendor320 INT8 | fail | n/a | n/a | n/a | n/a | n/a | n/a | aborts; no modern-runtime vendor320 fix |
+
+### Day 2 camera regression
+
+| Case | Runtime | Display/headless | Camera mode | Frame | Total ms | FPS | Effective FPS | Status |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| Normal camera default | `rt201` | display auto -> on, headless off | `/dev/v4l/by-id/... -> /dev/video20`, MJPG, `1280x720` | 60 | 245.835 | 4.068 | 2.316 | pass |
+| Fast-live camera | `rt123` | display auto -> on, headless off | `/dev/v4l/by-id/... -> /dev/video20`, YUYV, `640x480` | 80 | 69.089 | 14.474 | 8.928 | pass |
+| Forced headless normal | `rt201` | display off, headless on | same USB camera | 20 | 248.222 | 4.029 | 2.279 | pass |
+| Forced headless fast-live | `rt123` | display off, headless on | same USB camera | 50 | 66.061 | 15.137 | 10.390 | pass |
+| Normal still save | `rt201` | headless still | JPEG `1280x720` | 1 | 863.934 | 1.157 | 0.758 | pass |
+| Fast-live still save | `rt123` | headless still | JPEG `640x480` | 1 | 88.895 | 11.249 | 2.356 | pass |
+
+Stable `rt202` was not expanded into camera testing because it failed the image
+and performance gates first.
+
+### Day 2 performance regression
+
+Benchmark settings for app helper runs: `BENCH_PERF_REPEATS=50`,
+`BENCH_WARMUP=5`, `BENCH_RUNS=20`, `BENCH_REPEATS=3`, `threads=4`, `pin=cluster0`.
+
+| Case | Runtime | Model/profile | perf_test mean ms | perf_test FPS | App mode | App mean ms | App FPS | Notes |
+| --- | --- | --- | ---: | ---: | --- | ---: | ---: | --- |
+| Vendor320 low-latency perf | `rt201` | official vendor320 INT8 | 24.4143 | 40.9483 | forward | 24.210065 | 41.305136 | perf-only branch |
+| Vendor320 trusted visual control | `rt123` | official vendor320 INT8 | 48.3266 | 20.6767 | forward | 49.095494 | 20.368468 | visual branch |
+| Vendor320 trusted visual control | `rt123` | official vendor320 INT8 | n/a | n/a | full | 57.540777 | 17.378980 | full image pipeline |
+| Primary dynamic640 visual | `rt201` | generated dynamic640 INT8 | 190.024 | 5.2623 | forward | 190.567794 | 5.247476 | primary production visual branch |
+| Primary dynamic640 visual | `rt201` | generated dynamic640 INT8 | n/a | n/a | full | 233.480423 | 4.283014 | full image pipeline |
+| FP16 keep_io 640 | `rt201` | experimental FP16 | 270.867 | 3.69176 | forward | 273.265611 | 3.659443 | experimental |
+| FP16 keep_io 640 | `rt202b1` | experimental FP16 | 293.060863 | 3.41212 | forward | 294.988206 | 3.389966 | experimental |
+| Dynamic640 candidate | `rt202` stable | generated dynamic640 INT8 | fail | fail | forward/full | fail | fail | `tcm buffer acquire/alloc failed` / abort |
+| FP16 keep_io 640 candidate | `rt202` stable | experimental FP16 | fail | fail | forward | fail | fail | abort; does not replace `rt202b1` |
+| Vendor320 candidate | `rt202` stable | official vendor320 INT8 | fail | fail | forward | fail | fail | abort; no vendor320 fix |
+
+### Runtime status as of Day 2
+
+| Runtime | Production status | Notes |
+| --- | --- | --- |
+| `rt123` | production trusted for vendor320 visual and fast-live | Keep. |
+| `rt201` | production primary dynamic640 and vendor320 perf | Keep. |
+| `rt202b1` | active experimental FP16 640 fallback | Keep because stable `rt202` failed replacement testing. |
+| `rt202` stable | evaluated, not adopted | Pinned and selectable only for reproducibility; crashes current paths. |
+
+YOLO26n remains P2. Day 2 did not reopen YOLO26n R&D because stable `rt202`
+failed its runtime gate.
+
 ## Day 1 production regression, 2026-06-28
 
 Run directory:

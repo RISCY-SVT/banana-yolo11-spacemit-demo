@@ -28,6 +28,9 @@ export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ACWRK3
 - Verify both validated runtime trees exist:
   - `third_party/vendor/spacemit-ort.riscv64.1.2.3/include/spacemit_ort_env.h`
   - `third_party/vendor/spacemit-ort.riscv64.2.0.1/include/spacemit_ort_env.h`
+- Day 2 also pins stable `spacemit-ort.riscv64.2.0.2` as `rt202` for
+  reproducible regression. It is not a production runtime in this repo because
+  it aborted on dynamic640, FP16 640, and vendor320 checks.
 
 ## Cross build cannot find OpenCV
 
@@ -116,6 +119,9 @@ BANANA_DEMO_RUNTIME_TAG=rt201 ./scripts/bench_forward_only.sh models/vendor/yolo
   - `1.2.4`: semantically good vendor320 package line, but still bad for dynamic640
   - `2.0.1`: fast vendor320 benchmark path, but not the trusted visual choice
   - `2.0.2+beta1`: same bad vendor320 output family as `2.0.1`
+  - stable `2.0.2`: Day 2 testing aborted before a usable vendor320 semantic
+    result, including after a clean board reboot; do not use it as a visual
+    rescue path
 - A later EP/runtime pass found one public `rt201` visual workaround:
   - `SPACEMIT_EP_DISABLE_FLOAT16_EPILOGUE=1`
   - `SPACEMIT_EP_DISABLE_OP_NAME_FILTER=/model.23/Slice;/model.23/Slice_1;/model.23/Add_1;/model.23/Add_2;/model.23/Sub;/model.23/Sub_1`

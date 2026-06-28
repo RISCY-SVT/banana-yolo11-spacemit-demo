@@ -5,9 +5,12 @@ Standalone C++ demo repository for Banana Pi BPI-F3 / SpacemiT K1X using the ven
 - validated vendor runtimes:
   - `spacemit-ort.riscv64.1.2.3` for trustworthy vendor320 visual inference
   - `spacemit-ort.riscv64.2.0.1` for vendor320 low-latency benchmarking and dynamic640
+  - `spacemit-ort.riscv64.2.0.2` is fetchable for regression, but Day 2
+    validation did not adopt it because it aborts on the current model paths
 - closed execution providers:
   - `libspacemit_ep.so.1.2.3`
   - `libspacemit_ep.so.2.0.1`
+  - `libspacemit_ep.so.2.0.2` for explicit non-default stable-runtime regression
 - model family: Ultralytics YOLO11n
 - primary optimized path: INT8 ONNX on SpaceMIT EP
 
@@ -23,8 +26,10 @@ The repository is designed to be usable by another engineer from scratch once th
 - Vendor320 low-latency benchmark path: raw `rt201`; this is perf-only, not the default visual path.
 - Vendor320 `rt201` visual workaround: available and SHA256-guarded, but slower than the `rt123` visual path.
 - FP16: experimental coverage only; the usable board-side path is `keep_io` FP16 `640x640` on `rt201`/`rt202b1`.
+  Stable `rt202` was evaluated on Day 2 and is not a replacement for `rt202b1`.
 
-The Day 1 production regression confirmed this policy after the Day 0 loader recovery fix.
+The Day 2 release-candidate regression confirmed this policy after the Day 0
+loader recovery fix and Day 1 full regression.
 
 ## Architecture
 
@@ -35,6 +40,8 @@ The Day 1 production regression confirmed this policy after the Day 0 loader rec
   - vendor320 perf path: `rt201` = `spacemit-ort.riscv64.2.0.1`
   - primary production dynamic640 path: `rt201` = `spacemit-ort.riscv64.2.0.1`
   - fast-live camera path: trusted vendor320 visual stack on `rt123`
+  - stable-runtime evaluation path: `rt202` = `spacemit-ort.riscv64.2.0.2`
+    (explicit test tag only, not a production default)
 - Benchmark model path:
   - official vendor YOLO11n INT8 320x320 ONNX
 - Primary/default visual demo path:
@@ -116,11 +123,18 @@ Fetch and stage the vendor runtime:
 ```
 
 The validated runtime matrix is pinned in `third_party_manifest/runtime.lock`.
-The fetch helper stages both public tarballs required by this repository:
+The fetch helper stages the public tarballs required for production plus
+historical/experimental regression:
 
 - `rt123` -> `spacemit-ort.riscv64.1.2.3`
 - `rt201` -> `spacemit-ort.riscv64.2.0.1`
 - `rt202b1` -> `spacemit-ort.riscv64.2.0.2+beta1`
+- `rt202` -> `spacemit-ort.riscv64.2.0.2`
+
+Day 2 evaluated final stable `rt202` as a bounded release-candidate check. It
+is kept fetchable and selectable for reproducibility, but it is not an adopted
+runtime path because it aborted on the current dynamic640, FP16 640, and
+vendor320 test cases even after a board reboot with an idle `/dev/tcm`.
 
 ## Models
 
@@ -207,6 +221,8 @@ Current honest result summary:
 - public official/vendor YOLO11n FP16 ONNX artifacts were not found for `320` or `640`
 - Ultralytics `half=True` export on CPU was tested and rejected because it still produced FP32 ONNX
 - `keep_io` FP16 `640x640` works on `rt201` and `rt202b1`
+- stable `rt202` was evaluated and did not replace `rt202b1`; it aborted on
+  the same FP16 640 path that `rt202b1` runs successfully
 - `keep_io` FP16 `320x320` fails on all three validated public runtime lines
 - `keep_io` FP16 also fails on `rt123` for `640x640`
 - full-I/O FP16 models are dtype-correct, but they are not a supported board path on the tested public vendor lines

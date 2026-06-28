@@ -123,6 +123,15 @@ FP16_MODEL_VARIANT=keep_io ./scripts/bench_fp16_matrix.sh
 Only keep_io FP16 `640x640` on `rt201`/`rt202b1` is currently useful as an
 experimental board-side path.
 
+Stable `rt202` is selectable only for explicit regression:
+
+```bash
+BANANA_DEMO_RUNTIME_TAG=rt202 ./scripts/run_image_demo.sh
+```
+
+Do not use it for production or FP16 replacement in the 2026-07-02 scope. Day 2
+clean retesting showed aborts on dynamic640, FP16 640, and vendor320 paths.
+
 ## Issue Policy
 
 - P0 blocks production.
@@ -131,3 +140,6 @@ experimental board-side path.
 
 YOLO26n remains P2 after Day 1: export and dynamic INT8 conversion are possible,
 but current repo decode/quantized outputs are not semantically acceptable.
+
+Stable `spacemit-ort 2.0.2` remains non-adopted after Day 2 and should not be
+promoted without a separate runtime-side fix or vendor guidance.

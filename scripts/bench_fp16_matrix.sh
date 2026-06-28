@@ -23,7 +23,7 @@ Matrix defaults:
   - threads/pin: 4 / cluster0
 
 Environment overrides:
-  FP16_RUNTIME_TAGS=rt123,rt201,rt202b1
+  FP16_RUNTIME_TAGS=rt123,rt201,rt202b1,rt202
   FP16_MODEL_VARIANT=keep_io|full
   FP16_WARMUP=10
   FP16_RUNS=100

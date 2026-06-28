@@ -25,7 +25,7 @@ Vendor 320x320 note:
   - low-latency benchmark runs can still force raw rt201 behavior via BANANA_DEMO_RUNTIME_TAG=rt201 and BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=0
 
 Environment overrides:
-  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1
+  BANANA_DEMO_RUNTIME_TAG=auto|rt123|rt201|rt202b1|rt202
   BANANA_DEMO_VENDOR320_RT201_VISUAL_FIX=auto|0|1
   DISPLAY_FLAG=auto|0|1
   HEADLESS_FLAG=auto|0|1

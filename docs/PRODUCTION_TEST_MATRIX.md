@@ -52,3 +52,35 @@ Run directory:
 | Forward-only benchmark | `./scripts/bench_forward_only.sh` | explicit model/runtime per case |
 | Full pipeline benchmark | `./scripts/bench_full_demo.sh` | explicit model/runtime per case |
 | FP16 matrix | `./scripts/bench_fp16_matrix.sh` | experimental keep_io 640 |
+
+## Day 2 RC Soak / Stable rt202 Evaluation
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-06-28_17-50-14/
+```
+
+| Area | Case | Required result | Day 2 result |
+| --- | --- | --- | --- |
+| Continuity | Day 0 and Day 1 commits present | pass | pass |
+| Build | all active variants plus `rt202` candidate | pass | pass |
+| Deploy | `rt123`, `rt201`, `rt202b1`, `rt202` staged separately | pass | pass |
+| Loader | all deployed demo binaries | repo-local runtime/OpenCV resolution | pass |
+| Image | default generated dynamic640 INT8 on `rt201` | semantically reasonable | pass |
+| Image | vendor320 trusted visual on `rt123` | semantically reasonable | pass |
+| Image | vendor320 raw `rt201` perf path | perf/raw sanity only | pass as perf/raw |
+| Image | vendor320 `rt201` workaround | semantically reasonable and SHA256-guarded | pass |
+| Image | FP16 keep_io 640 on `rt201` | experimental smoke | pass |
+| Image | FP16 keep_io 640 on `rt202b1` | experimental smoke | pass |
+| Image | FP16 keep_io 320 | known failure remains documented | expected fail |
+| Stable rt202 | dynamic640, FP16 640, vendor320 | no crash before adoption | fail; not adopted |
+| Camera | normal camera default | runs without crash | pass |
+| Camera | fast-live | runs without crash | pass |
+| Camera | forced headless normal | progress logs, no hang | pass |
+| Camera | forced headless fast-live | progress logs, no hang | pass |
+| Performance | vendor320/dynamic640/FP16 matrix | fresh Day 2 numbers captured | pass |
+| Docs | Doxygen coverage/generation | `missing_at_file=0`, warnings checked | pass |
+
+Stable `rt202` did not become a camera candidate because it failed the image and
+performance gates first.

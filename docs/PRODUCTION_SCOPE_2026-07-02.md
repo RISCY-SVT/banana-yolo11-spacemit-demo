@@ -17,11 +17,13 @@
 | --- | --- | --- | --- |
 | FP16 keep_io 640 | `rt201` | experimental usable | Board-side coverage path, not production default. |
 | FP16 keep_io 640 | `rt202b1` | experimental usable | Slightly slower than `rt201`, not production default. |
+| Stable runtime evaluation | `rt202` | not adopted | Final public `spacemit-ort 2.0.2` is fetchable/selectable, but Day 2 clean retest aborted on current paths. |
 | FP16 keep_io 320 | `rt201`/`rt202b1` | known fail | Keep documented as unsupported. |
 
 ## Explicitly Out Of Scope Before 2026-07-02
 
 - Adopting stable public `spacemit-ort 2.0.2` as production runtime.
+  Day 2 already evaluated it and found it non-adoptable for this release.
 - Replacing the current runtime/model policy.
 - Rewriting the camera pipeline architecture.
 - Introducing latest-frame/drop-old-frames pipeline behavior.
@@ -33,3 +35,10 @@
 
 Day 1 regression keeps the current product policy and formalizes generated
 `dynamic640` INT8 on `rt201` as the primary production visual branch.
+
+## Day 2 Decision
+
+Day 2 RC soak/regression keeps the same production policy. Stable public
+`spacemit-ort.riscv64.2.0.2` is pinned for reproducible evaluation as `rt202`,
+but it does not replace `rt201` or `rt202b1` because it aborted on dynamic640,
+FP16 640, and vendor320 checks, including after a clean board reboot.
