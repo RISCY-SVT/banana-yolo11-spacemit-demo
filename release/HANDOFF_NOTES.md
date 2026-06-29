@@ -4,6 +4,8 @@
 
 Use dynamic640 INT8 on `rt201` for production visual quality. Use fast-live
 vendor320 on `rt123` when responsiveness matters more than 640 visual quality.
+For the consolidated FPS/latency matrix and metric-class caveats, read
+`release/FPS_SUMMARY.md`.
 
 ## Logs and Mirror
 
