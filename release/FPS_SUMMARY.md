@@ -4,6 +4,10 @@ This release-package copy points management and operators to the same
 authoritative matrix as `docs/FPS_SUMMARY.md`. It is intentionally included in
 `release/` so a handoff bundle can be read without scanning raw logs.
 
+For the final post-tag full COCO val2017 mAP pass and fresh stable FPS rows,
+see `release/COCO_MAP_FPS_SUMMARY.md`. The production tag and runtime/model
+policy were not changed by that reporting pass.
+
 The consolidated matrix was generated from accepted production-week evidence:
 
 - Day 4 final acceptance: `/data/ncnn-logs/ort-logs/2026-06-28_19-47-11/`

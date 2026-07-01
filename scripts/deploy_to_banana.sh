@@ -22,6 +22,9 @@ done
 ssh "${TARGET}" "${runtime_mkdir_cmd}"
 for runtime_tag in "${DEPLOY_VARIANTS[@]}"; do
   rsync -avc "${ROOT_DIR}/install/k1x-release-${runtime_tag}/bin/banana_yolo11_demo" "${TARGET}:${BOARD_DIR}/bin/banana_yolo11_demo_${runtime_tag}"
+  if [[ -x "${ROOT_DIR}/install/k1x-release-${runtime_tag}/bin/banana_yolo11_coco_eval" ]]; then
+    rsync -avc "${ROOT_DIR}/install/k1x-release-${runtime_tag}/bin/banana_yolo11_coco_eval" "${TARGET}:${BOARD_DIR}/bin/banana_yolo11_coco_eval_${runtime_tag}"
+  fi
   rsync -av "$(banana_demo_runtime_vendor_root "${ROOT_DIR}" "${runtime_tag}")/" "${TARGET}:${BOARD_DIR}/runtime/${runtime_tag}/"
 done
 # Keep a compatibility binary at the historical app/bin path used by older

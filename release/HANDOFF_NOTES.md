@@ -5,7 +5,9 @@
 Use dynamic640 INT8 on `rt201` for production visual quality. Use fast-live
 vendor320 on `rt123` when responsiveness matters more than 640 visual quality.
 For the consolidated FPS/latency matrix and metric-class caveats, read
-`release/FPS_SUMMARY.md`.
+`release/FPS_SUMMARY.md`. For final post-tag full COCO mAP and stable FPS
+evidence, read `release/COCO_MAP_FPS_SUMMARY.md` and the bilingual final
+production reports.
 
 ## Logs and Mirror
 

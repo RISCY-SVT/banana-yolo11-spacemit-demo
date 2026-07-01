@@ -4,6 +4,11 @@ This is the authoritative consolidated FPS/latency view for the
 2026-07-02 production handoff. It is compiled from accepted production-week
 evidence and does not change the runtime/model policy.
 
+Final post-tag COCO/FPS validation was added on 2026-07-01. For full COCO
+val2017 mAP and fresh stable benchmark rows, see `docs/COCO_MAP_FPS_REPORT.md`
+and `release/COCO_MAP_FPS_SUMMARY.md`. This historical handoff matrix remains
+useful for the broader Day 1/Day 2 variant context.
+
 Source evidence:
 
 - Day 4 final acceptance: `/data/ncnn-logs/ort-logs/2026-06-28_19-47-11/`

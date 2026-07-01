@@ -1,30 +1,16 @@
 # Final Production Presentation Assets
 
-This file indexes the assets used by `FINAL_PRODUCTION_PRESENTATION_EN.md` and `FINAL_PRODUCTION_PRESENTATION_RU.md`.
+The Markdown slide decks are the authoritative presentation sources. PPTX/PDF export is optional and was not generated in this container.
 
-## Asset Table
+## Assets
 
-| Evidence | Asset | Source |
-| --- | --- | --- |
-| Primary dynamic640 still image | `release/assets/dynamic640_primary_day4.jpg` | Day 4 final acceptance output |
-| Vendor320 trusted visual still image | `release/assets/vendor320_trusted_day4.jpg` | Day 4 final acceptance output |
-| Normal camera still | `release/assets/camera_default_day4.jpg` | Day 4 final acceptance output |
-| Fast-live camera still | `release/assets/camera_fast_day4.jpg` | Day 4 final acceptance output |
-| Architecture diagram | `release/assets/architecture_diagram.svg` | generated from release docs |
-| Runtime/model policy diagram | `release/assets/runtime_policy_diagram.svg` | generated from frozen policy |
-| Forward FPS chart | `release/assets/chart_forward_fps.png` | generated from `docs/FPS_SUMMARY.md` / `release/FPS_SUMMARY.md` values |
-| Full-image FPS chart | `release/assets/chart_full_image_fps.png` | generated from `docs/FPS_SUMMARY.md` / `release/FPS_SUMMARY.md` values |
-| Camera FPS chart | `release/assets/chart_camera_fps.png` | generated from `docs/FPS_SUMMARY.md` / `release/FPS_SUMMARY.md` values |
+- `assets/coco_architecture_diagram.svg`
+- `assets/metric_taxonomy_diagram.svg`
+- `assets/coco_map_bar.png`
+- `assets/fps_metric_class_bar.png`
+- `assets/camera_fps_bar.png`
+- `assets/coco_sample_primary_*.jpg`
+- `assets/camera_normal_default_coco_pass.jpg`
+- `assets/camera_fast_live_coco_pass.jpg`
 
-
-## Chart Sources
-
-Charts are generated from authoritative values in `docs/FPS_SUMMARY.md` and the release copy `release/FPS_SUMMARY.md`; the source CSV is `release/assets/fps_chart_source.csv`.
-
-## PPTX/PDF Status
-
-PPTX/PDF files were not generated in this environment because reliable slide tooling is not installed (`python-pptx` and `pandoc` are unavailable). The Markdown decks are slide-structured and ready for later conversion.
-
-## SHA256 Manifest
-
-See `release/assets/ASSET_MANIFEST.md`.
+All asset hashes are listed in `release/FINAL_PRODUCTION_REPORT_ASSETS.md`.

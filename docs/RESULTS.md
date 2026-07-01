@@ -7,6 +7,28 @@ and rejected/P2 variants, see `docs/FPS_SUMMARY.md`. That file is the
 authoritative summary table; this file preserves the underlying Day-by-Day
 result history.
 
+## Final full COCO mAP and stable FPS pass, 2026-07-01
+
+Run directory:
+
+```text
+/data/ncnn-logs/ort-logs/2026-07-01_10-44-19/
+```
+
+This post-tag validation did not move `production-2026-07-02` and did not
+change the runtime/model policy. It added evaluation-only COCO tooling and
+generated full COCO val2017 results from board-side production runtime stacks.
+
+| Candidate | Runtime | Images | AP@[.50:.95] | AP50 | AP75 | Status |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| Primary dynamic640 INT8 | `rt201` | 5000 | 0.384006 | 0.539212 | 0.419599 | production primary |
+| Vendor320 trusted visual | `rt123` | 5000 | 0.211281 | 0.333139 | 0.225284 | fast-live / trusted visual |
+| Vendor320 `rt201` visual workaround | `rt201` | 5000 | 0.216324 | 0.337841 | 0.234206 | non-default workaround |
+
+Fresh stable FPS rows are summarized in `docs/COCO_MAP_FPS_REPORT.md` and
+`release/COCO_MAP_FPS_SUMMARY.md`. Raw COCO prediction JSON files remain in the
+run directory and are intentionally not committed.
+
 ## Day 3 release packaging and handoff readiness, 2026-06-28
 
 Run directory:

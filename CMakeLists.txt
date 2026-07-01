@@ -80,7 +80,18 @@ set_target_properties(banana_yolo11_demo PROPERTIES
     INSTALL_RPATH "$ORIGIN/../runtime/${BANANA_DEMO_RUNTIME_SUBDIR};$ORIGIN/../../runtime/${BANANA_DEMO_RUNTIME_SUBDIR};$ORIGIN/../opencv/lib;$ORIGIN/../../opencv/lib"
 )
 
+add_executable(banana_yolo11_coco_eval tools/coco_eval/banana_yolo11_coco_eval.cpp)
+target_link_libraries(banana_yolo11_coco_eval PRIVATE banana_demo_core)
+set_target_properties(banana_yolo11_coco_eval PROPERTIES
+    BUILD_RPATH "${VENDOR_SPACEMIT_ORT_ROOT}/lib"
+    INSTALL_RPATH "$ORIGIN/../runtime/${BANANA_DEMO_RUNTIME_SUBDIR};$ORIGIN/../../runtime/${BANANA_DEMO_RUNTIME_SUBDIR};$ORIGIN/../opencv/lib;$ORIGIN/../../opencv/lib"
+)
+
 install(TARGETS banana_yolo11_demo
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+
+install(TARGETS banana_yolo11_coco_eval
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
 )
 

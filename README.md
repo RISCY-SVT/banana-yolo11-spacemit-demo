@@ -34,6 +34,10 @@ loader recovery fix and Day 1 full regression.
 For the consolidated management-facing FPS/latency table, including metric-class
 caveats and rejected/P2 paths, see `docs/FPS_SUMMARY.md`.
 
+Final post-tag validation added full COCO val2017 mAP and stable FPS evidence
+without moving `production-2026-07-02` or changing the production policy. See
+`docs/COCO_MAP_FPS_REPORT.md` and `release/COCO_MAP_FPS_SUMMARY.md`.
+
 ## Architecture
 
 - Host build: Ubuntu 24.04 x86_64 cross-build container

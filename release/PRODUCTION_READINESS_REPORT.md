@@ -36,6 +36,12 @@ documentation tree. The summary separates `perf_test forward`, app
 forward-only, full-image, and camera loop metrics so they are not compared as a
 single leaderboard.
 
+Post-tag final validation added full COCO val2017 mAP and fresh stable FPS
+evidence without changing the production tag or runtime/model policy. See
+`release/COCO_MAP_FPS_SUMMARY.md` and the bilingual final reports in
+`release/FINAL_PRODUCTION_REPORT_EN.md` and
+`release/FINAL_PRODUCTION_REPORT_RU.md`.
+
 ## Day 3 Gate
 
 Day 3 is a release-candidate packaging and handoff-readiness gate. It does not
