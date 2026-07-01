@@ -1,0 +1,16 @@
+variant,metric_class,fps,mean_latency_ms,source
+"dynamic640 rt201","perf_test forward",5.2623,190.024,release/FPS_SUMMARY.md
+"dynamic640 rt201","app forward-only",5.247476,190.567794,release/FPS_SUMMARY.md
+"dynamic640 rt201","app full image",4.283014,233.480423,release/FPS_SUMMARY.md
+"normal camera dynamic640 rt201","camera effective",2.069,,release/FPS_SUMMARY.md
+"normal camera dynamic640 rt201","camera instantaneous",4.189,238.716,release/FPS_SUMMARY.md
+"fast-live vendor320 rt123","camera effective",9.382,,release/FPS_SUMMARY.md
+"fast-live vendor320 rt123","camera instantaneous",14.898,67.121,release/FPS_SUMMARY.md
+"vendor320 rt123","perf_test forward",20.6767,48.3266,release/FPS_SUMMARY.md
+"vendor320 rt123","app forward-only",20.368468,49.095494,release/FPS_SUMMARY.md
+"vendor320 rt123","app full image",17.37898,57.540777,release/FPS_SUMMARY.md
+"vendor320 rt201 raw","perf_test forward",40.9483,24.4143,release/FPS_SUMMARY.md
+"vendor320 rt201 raw","app forward-only",41.305136,24.210065,release/FPS_SUMMARY.md
+"vendor320 rt201 workaround","app full image",5.616,178.049,release/FPS_SUMMARY.md
+"FP16 keep_io rt201","app forward-only",3.659443,273.265611,release/FPS_SUMMARY.md
+"FP16 keep_io rt201","app full image",2.059,485.721,release/FPS_SUMMARY.md
